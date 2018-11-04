@@ -1,10 +1,12 @@
 import tensorflow as tf
 from tensorflow import keras
-from pathlib import Path
 
 from matplotlib import pyplot as plt
+from matplotlib import cm
 
-import dragonfist.transformations as transformations
+from pathlib import Path
+
+import transformations
 
 savedModelFile = "savedModel.h5py"
 
@@ -13,21 +15,34 @@ fashion_mnist = keras.datasets.fashion_mnist
 train_images = train_images / 255.0
 test_images = test_images / 255.0
 
+num_classes  = max(train_labels)+1
+train_labels = keras.utils.to_categorical(train_labels, num_classes)
+test_labels  = keras.utils.to_categorical(test_labels, num_classes)
+
+# https://cs231n.github.io/neural-networks-2/
+# preprocessing for images:
+# - zero centering / mean subtraction (either all at once, or for each color channel)
+# - normalization / scaling (not strictly necessary for images)
+# - PCA
+# - Whitening
+# Keras has all of these already, in keras.preprocessing.image
 
 def main(image_filter=transformations.identity, retrain=True, save=False):
+
+    input_shape = train_images.shape[1:]
 
     if not retrain and Path(savedModelFile).is_file():
         model = keras.models.load_model(savedModelFile)
 
     else:
         model = keras.Sequential([
-            keras.layers.Flatten(input_shape=(28, 28)),
-            keras.layers.Dense(128, activation=tf.nn.relu),
-            keras.layers.Dense(10, activation=tf.nn.softmax)
+            keras.layers.Flatten(input_shape=input_shape),
+            keras.layers.Dense(128, activation=keras.activations.relu),
+            keras.layers.Dense(10, activation=keras.activations.softmax)
         ])
         model.compile(optimizer=keras.optimizers.SGD(lr=0.01, nesterov=True),
-                      loss='sparse_categorical_crossentropy',
-                      metrics=['accuracy'])
+                      loss=keras.losses.categorical_crossentropy,
+                      metrics=[keras.metrics.categorical_accuracy])
 
 
         filtered_train_images = image_filter(train_images)
@@ -43,12 +58,14 @@ def main(image_filter=transformations.identity, retrain=True, save=False):
     print('Test accuracy:', test_acc)
 
     plt.figure(1, figsize=(10, 10))
-    plt.title("Test Image 0-5 and filtered images 0-5")
-    for i in range(1, 5):
-        plt.subplot(2, 5, i)
-        plt.imshow(test_images[i])
-        plt.subplot(2, 5, 5+i)
-        plt.imshow(filtered_test_images[i])
+    nimages = 5
+    plt.title("Test Image 0-{0} and filtered images 0-{0}".format(nimages-1))
+    for i in range(5):
+        plt_i = i+1
+        plt.subplot(2, 5, plt_i).set_axis_off()
+        plt.imshow(test_images[i], cmap=cm.gray_r)
+        plt.subplot(2, 5, 5+plt_i).set_axis_off()
+        plt.imshow(filtered_test_images[i], cmap=cm.gray_r)
 
     plt.show()
 
