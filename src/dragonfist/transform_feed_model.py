@@ -10,6 +10,8 @@ from tensorflow.keras.activations import relu, softmax
 from matplotlib import pyplot as plt
 from matplotlib import cm
 
+import functools
+
 import transformations
 
 # TODO Can probably use any image dataset with this. If so, make it variable
@@ -36,7 +38,7 @@ test_labels  = keras.utils.to_categorical(test_labels, num_classes)
 # - PCA/ZCA, Whitening (course claims this isn't used with CNNs, but paper says it's the most important one to use!)
 # Keras has all of these already, in keras.preprocessing.image
 
-def main(image_filter=transformations.identity):
+def main(image_filter=transformations.identity, filter_params={}, preprocess=False, preprocess_params={}):
     # CNN for learning CIFAR-10, based on this example:
     # https://github.com/keras-team/keras/blob/master/examples/cifar10_cnn.py
     # TODO Need to do some research to find a good image classifier CNN, then implement it.
@@ -67,32 +69,43 @@ def main(image_filter=transformations.identity):
                   loss=keras.losses.categorical_crossentropy,
                   metrics=[keras.metrics.categorical_accuracy])
 
-    # TODO Allow "main" to pass other parameters into ImageDataGenerator
-    datagen = ImageDataGenerator(rescale=1/255.0, preprocessing_function=image_filter)
+    if filter_params != {}:
+        image_filter = functools.partial(image_filter, **filter_params)
 
-    # Compute quantities required for feature-wise normalization
-    # (std, mean, and principal components if ZCA whitening is applied).
-    # TODO uncomment this when any of the above are applied
-    #datagen.fit(train_images)
+    if preprocess:
+        datagen = ImageDataGenerator(rescale=1/255.0, preprocessing_function=image_filter, **preprocess_params)
 
-    # Interesting methods:
-    # datagen.apply_transform(x, transform_parameters)
-    # datagen.random_transform(x, seed)
-    # datagen.standardize(x)
+        # Compute quantities required for feature-wise normalization
+        # (std, mean, and principal components if ZCA whitening is applied).
+        # TODO uncomment this when any of the above are applied
+        #datagen.fit(train_images)
 
-    # NOTE: To save the preprocessed images to disk, pass save_to_dir='genimage'.
-    # WARNING!!! It will save hundreds of images, so it might kill your hard drive.
-    # Lower the training/test set size and the number of epochs before using save_to_dir.
-    # TODO Add testing code to iterate over datagen.flow and pick some images to plot
-    #      with matplotlib or to save to disk, instead of saving all of them.
-    #
-    # NOTE: By default, datagen.flow uses a batch size of 32.
-    #       Using 1 would be nice but it takes too long, and
-    #       using the entire set as a batch takes too much memory.
-    model.fit_generator(datagen.flow(train_images, train_labels),
-                        validation_data=datagen.flow(test_images, test_labels),
-                        epochs=10,
-                        workers=4)
+        # Interesting methods:
+        # datagen.apply_transform(x, transform_parameters)
+        # datagen.random_transform(x, seed)
+        # datagen.standardize(x)
+
+        # NOTE: To save the preprocessed images to disk, pass save_to_dir='genimage'.
+        # WARNING!!! It will save hundreds of images, so it might kill your hard drive.
+        # Lower the training/test set size and the number of epochs before using save_to_dir.
+        # TODO Add testing code to iterate over datagen.flow and pick some images to plot
+        #      with matplotlib or to save to disk, instead of saving all of them.
+        #
+        # NOTE: By default, datagen.flow uses a batch size of 32.
+        #       Using 1 would be nice but it takes too long, and
+        #       using the entire set as a batch takes too much memory.
+        batch_size=32
+        model.fit_generator(datagen.flow(train_images, train_labels, batch_size=batch_size),
+                            validation_data=datagen.flow(test_images, test_labels, batch_size=batch_size),
+                            epochs=10,
+                            workers=4)
+
+    else:
+        filtered_train_images = image_filter(train_images/255.0, **filter_params)
+        filtered_test_images  = image_filter(test_images /255.0, **filter_params)
+        model.fit(filtered_train_images, train_labels, epochs=10,
+                  validation_data=(filtered_test_images, test_labels))
 
 main()
 main(transformations.edge_detection)
+main(transformations.gaussian, filter_params={'sigma':0.5})
