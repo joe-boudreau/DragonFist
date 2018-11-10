@@ -4,6 +4,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 import transformations
 
+
 class Filter:
     def __init__(self, image_filter, data):
         self._image_filter = image_filter
@@ -64,13 +65,13 @@ class Filter:
         self._preprocess_params = value
 
     def initialize(self):
-        if (self._params != {}):
+        if self._params != {}:
             self._image_filter = functools.partial(
                 self._image_filter,
                 **self._params
             )
 
-        if (self._preprocessing):
+        if self._preprocessing:
             self._datagen = ImageDataGenerator(
                 preprocessing_function=self._image_filter,
                 **self._preprocess_params

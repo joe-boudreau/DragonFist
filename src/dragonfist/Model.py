@@ -1,5 +1,5 @@
-import tensorflow as tensorflow
 from tensorflow import keras
+
 
 class Model:
     def __init__(self, layers):
@@ -97,7 +97,7 @@ class Model:
         )
 
     def fit(self):
-        if (self._image_filter.datagen is not None):
+        if self.is_data_generator():
             train_generator = self._image_filter.datagen.flow(
                 self._image_filter.data.train_images,
                 self._image_filter.data.train_labels,
@@ -105,7 +105,7 @@ class Model:
             )
 
             validation_generator = self._image_filter.datagen.flow(
-                self._image_filter.data.test_images,
+                self._imag_filter.data.test_images,
                 self._image_filter.data.test_labels,
                 batch_size=self._batch_size
             )
@@ -117,13 +117,7 @@ class Model:
                 workers=self._workers
             )
 
-            self._test_loss, self._test_accuracy = self._model.evaluate_generator(
-                self._image_filter.datagen.flow(
-                    self._image_filter.data.test_images,
-                    self._image_filter.data.test_labels,
-                    batch_size=self._batch_size
-                )
-            )
+            self.evaluate()
         else:
             self._model.fit(
                 self._image_filter.filtered_train_images,
@@ -135,7 +129,30 @@ class Model:
                 )
             )
 
-            self._test_loss, self._test_accuracy = self._model.evaluate(
-                self._image_filter.filtered_test_images,
-                self._image_filter.data.test_labels
+            self.evaluate()
+
+    def evaluate(self):
+        if self.is_data_generator():
+            self._test_loss, self._test_accuracy = self._model.evaluate_generator(
+                self._image_filter.datagen.flow(
+                    self._image_filter.data.test_images,
+                    self._image_filter.data.test_labels,
+                    batch_size=self._batch_size
+                )
             )
+        else:
+            self._test_loss, self._test_accuracy = self._model.evaluate(self._image_filter.filtered_test_images,
+                                                                        self._image_filter.data.test_labels, )
+
+    def predict(self, x):
+        return self._model.predict_on_batch(x)
+
+    #TODO: Need to implement saving and loading functionality for this Model class to prevent having to retrain
+    def load(self, file_name):
+        self._model = keras.models.load_model(file_name)
+
+    def save(self, file_name):
+        self._model.save(file_name)
+
+    def is_data_generator(self):
+        return self._image_filter.datagen is not None

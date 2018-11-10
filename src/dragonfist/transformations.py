@@ -2,13 +2,13 @@ import skimage
 from scipy import ndimage
 from skimage import filters, color
 import numpy as np
+from skimage.color.adapt_rgb import adapt_rgb, each_channel, hsv_value
 
 """This module contains the image transformations. Each function in this module should accept and return a
 Numpy array representing an image. Some may accept additional hyperparameters for tuning the filters"""
 
 def multi(filter, images):
     return np.array([filter(i) for i in images])
-
 
 def compat3d(filter, image, *args):
     return color.gray2rgb(filter(color.rgb2gray(image), *args))
@@ -25,6 +25,11 @@ def edge_detection_3d(image):
     return compat3d(edge_detection, image)
 
 
+@adapt_rgb(hsv_value)
+def edge_detection_rgb_adapter(image):
+    return filters.sobel(image)
+
+
 def gabor_real(image, frequency=0.8):
     """Seems like increase in frequency correlates with model accuracy. training on images filtered with f = 0.5 results
         in accuracy around 50%. If f = 0.8 the accuracy jumps up to 80%"""
@@ -32,6 +37,11 @@ def gabor_real(image, frequency=0.8):
 
 def gabor_real_3d(image, frequency=0.8):
     return compat3d(gabor_real, image, frequency)
+
+
+@adapt_rgb(hsv_value)
+def gabor_real_rgb_adapter(image, frequency=0.8):
+    return filters.gabor(image, frequency)[0]
 
 
 def gabor_imaginary(image, frequency=0.5):
