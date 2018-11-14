@@ -43,7 +43,7 @@ input_shape = train_images.shape[1:]
 
 # Use one-hot encoding for labels
 train_labels = keras.utils.to_categorical(train_labels, num_classes)
-test_labels  = keras.utils.to_categorical(test_labels, num_classes)
+test_labels = keras.utils.to_categorical(test_labels, num_classes)
 
 
 def main(image_filter=transformations.identity, filter_params={}, preprocess_params={},
@@ -164,10 +164,7 @@ def attackFGM(model, datagen, plot_images=5, save_image_location='atkimageFGM'):
     filter_name = get_filter_name(image_filter)
 
     if plot_images > 0:
-        save_to_dir = None
-        if save_image_location != None and save_image_location != '':
-            save_to_dir = save_image_location + '/' + filter_name
-            os.makedirs(save_to_dir, exist_ok=True)
+        save_to_dir = create_image_folder(filter_name, save_image_location)
 
         # NOTE: Use a different generator here to show only the effects of the filter,
         #       and not of any other preprocessing step.
@@ -218,9 +215,9 @@ def attackFGM(model, datagen, plot_images=5, save_image_location='atkimageFGM'):
 
 
 def attackJSM(model, datagen, source_samples=3, save_image_location='atkimageJSM'):
-    # TODO Actually save images
 
     image_filter = datagen.preprocessing_function
+    save_to_dir = create_image_folder(get_filter_name(image_filter), save_image_location)
 
     print('Crafting ' + str(source_samples) + ' * ' + str(num_classes - 1) +
           ' adversarial examples')
@@ -281,7 +278,7 @@ def attackJSM(model, datagen, source_samples=3, save_image_location='atkimageJSM
 
             # NOTE batch_size=1 and steps=1 is only for one-at-a-time attacks
             preds = model.predict_generator(
-                        datagen.flow(adversarial_images, batch_size=1),
+                        datagen.flow(adversarial_images, batch_size=1, save_to_dir=save_to_dir),
                         steps=1)
 
             # Check if success was achieved
@@ -334,6 +331,14 @@ def get_filter_name(image_filter):
         name += '-{}_{}'.format(key, value)
     name += '-e{}'.format(epochs)
     return name
+
+
+def create_image_folder(filter_name, save_image_location):
+    save_to_dir = None
+    if save_image_location is not None and save_image_location != '':
+        save_to_dir = save_image_location + '/' + filter_name
+        os.makedirs(save_to_dir, exist_ok=True)
+    return save_to_dir
 
 
 main(plot_images=0)

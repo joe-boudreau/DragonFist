@@ -18,9 +18,7 @@ class BasicAveragingEnsemble(Model):
             if predictions[i].argmax() == y[i].argmax():
                 num_correct += 1
 
-        accuracy = num_correct / num_samples
-        print("Test Accuracy on Ensemble: {0}".format(accuracy))
-        return accuracy
+        return num_correct / num_samples
 
     def predict(self, x, **kwargs):
         predictions = np.array([model.predict(x, ) for model in self._models])

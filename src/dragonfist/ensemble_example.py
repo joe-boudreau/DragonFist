@@ -26,7 +26,6 @@ def main(train):
         edge_detection.initialize()
         compile_train_model(data, edge_detection, EDGE_DETECTION_MODEL)
 
-
     model1 = keras.models.load_model(ID_MODEL)
     model2 = keras.models.load_model(GABOR_MODEL)
     model3 = keras.models.load_model(EDGE_DETECTION_MODEL)
@@ -41,10 +40,11 @@ def main(train):
     print('Accuracy on Edge Detection Model: {0}'.format(test_acc))
 
     ensemble = BasicAveragingEnsemble(model1, model2, model3)
-    ensemble.evaluate(data.test_images, data.test_labels)
+    test_acc = ensemble.evaluate(data.test_images, data.test_labels)
+    print("Test Accuracy on Ensemble: {0}".format(test_acc))
 
 
-def compile_train_model(data, filter, fileName):
+def compile_train_model(data, im_filter, file_name):
     model = Model([
         keras.layers.Flatten(input_shape=data.input_shape),
         keras.layers.Dense(128, activation=keras.activations.relu),
@@ -52,10 +52,10 @@ def compile_train_model(data, filter, fileName):
     ])
     model.optimizer = keras.optimizers.SGD(lr=0.01, nesterov=True)
     model.epochs = 5
-    model.image_filter = filter
+    model.image_filter = im_filter
     model.initialize()
     model.fit()
-    model.save(fileName)
+    model.save(file_name)
 
 
 main(False)
