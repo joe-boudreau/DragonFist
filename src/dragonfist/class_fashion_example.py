@@ -31,6 +31,8 @@ def main(image_filter=transformations.identity):
     model.initialize()
     model.fit()
 
+    image_filter.plot()
+
     print('Accuracy: {0}'.format(model.test_accuracy))
 
 #main()

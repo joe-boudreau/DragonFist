@@ -1,4 +1,5 @@
 import functools
+from matplotlib import pyplot as plt
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
@@ -88,3 +89,54 @@ class Filter:
                 self._image_filter,
                 self._data.test_images
             )
+
+    def plot(self, num_images=5):
+        cols = ["{0}".format(i + 1) for i in range(num_images)]
+        rows = ["Original", "Filtered"]
+
+        num_rows = len(rows)
+        figure, axes = plt.subplots(nrows=num_rows, ncols=num_images)
+
+        figure.canvas.set_window_title("Filter")
+        figure.suptitle(self._image_filter.__name__.title().replace("_", " "))
+
+        for i in range(num_images):
+            # Plot the original image
+            figure.add_subplot(
+                num_rows,
+                num_images,
+                i + 1
+            ).set_axis_off()
+            plt.imshow(self._data.test_images[i])
+
+            # Plot the filtered image
+            figure.add_subplot(
+                num_rows,
+                num_images,
+                num_images + i + 1
+            ).set_axis_off()
+            plt.imshow(self._filtered_test_images[i])
+
+            axes[0, i].axis("off")
+            axes[1, i].axis("off")
+
+        for ax, col in zip(axes[0], cols):
+            ax.set_title(col)
+
+        for ax, row in zip(axes[:, 0], rows):
+            ax.axis("on")
+            ax.set_frame_on(False)
+            ax.tick_params(
+                which='both',
+                top=False,
+                right=False,
+                bottom=False,
+                left=False,
+                labeltop=False,
+                labelright=False,
+                labelbottom=False,
+                labelleft=False
+            )
+            ax.set_ylabel(row, rotation=90, size="large")
+
+        plt.show()
