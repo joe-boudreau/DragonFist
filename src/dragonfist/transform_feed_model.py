@@ -1,157 +1,25 @@
-import keras
-from keras.preprocessing.image import ImageDataGenerator
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Flatten
-from keras.layers import Conv2D, MaxPooling2D
-from keras.activations import relu, softmax
+from keras import datasets
 
 import cleverhans
 from cleverhans.attacks import FastGradientMethod, SaliencyMapMethod
 from cleverhans.utils_keras import KerasModelWrapper
 
+from skimage import filters
+from skimage.color.adapt_rgb import each_channel, hsv_value
+
 from matplotlib import pyplot as plt
 import numpy as np
 
-import functools
 import os
 
-import transformations
+import transformations as tr
 
-# Global settings
-epochs = 10
-# NOTE: By default, datagen.flow uses a batch size of 32.
-#       Tweak to find best tradeoff between runtime & memory.
-#       (Lower is slower, higher is more memory)
-generator_batch_size=32
-# NOTE: Must pick good number of workers knowing that there will
-#       be filter-level parallelism too.
-generator_workers=1
-
-# Dataset-specific settings
-# TODO If the model is good for any image classification,
-#      set these in a function with custom parameters
-#      instead of hardcoding them.
-dataset = keras.datasets.cifar10
-num_classes = 10
-rescale = 1/255.0
-
-# Prepare data
-(train_images, train_labels), (test_images, test_labels) = dataset.load_data()
-train_images = train_images * rescale
-test_images = test_images * rescale
-input_shape = train_images.shape[1:]
-
-# Use one-hot encoding for labels
-train_labels = keras.utils.to_categorical(train_labels, num_classes)
-test_labels = keras.utils.to_categorical(test_labels, num_classes)
+from data import DataSet
+from processing import ImageProcessor
+from model import *
 
 
-def main(image_filter=transformations.identity, filter_params={}, preprocess_params={},
-         plot_images=5, save_image_location='genimage',
-         retrain=False, save_model_location='models'):
-
-    image_filter = functools.partial(image_filter, **filter_params)
-    filter_name = get_filter_name(image_filter)
-
-    datagen = ImageDataGenerator(preprocessing_function=image_filter, **preprocess_params)
-    datagen.fit(train_images) # Always run this in case one of the preprocess_params enables feature-wise normalization.
-
-
-    if plot_images > 0:
-        save_to_dir = None
-        if save_image_location != None and save_image_location != '':
-            save_to_dir = save_image_location + '/' + filter_name
-            os.makedirs(save_to_dir, exist_ok=True)
-
-        # NOTE: Use a different generator here to show only the effects of the filter,
-        #       and not of any other preprocessing step.
-        filtergen = ImageDataGenerator(preprocessing_function=image_filter)
-        image_generator = filtergen.flow(train_images[0:plot_images],
-                                         batch_size=1, shuffle=False, save_to_dir=save_to_dir)
-
-        i = 0
-        fig, axs = plt.subplots(2, plot_images)
-        for batch_images in image_generator:
-            ax = axs[0,i]
-            ax.imshow(train_images[i])
-            ax.set_axis_off()
-            ax = axs[1,i]
-            ax.imshow(batch_images[0])
-            ax.set_axis_off()
-
-            i = i+1
-            if i == plot_images:
-                plt.show()
-                break
-
-
-    model_name = None
-    if save_model_location != None and save_model_location != '':
-        model_name = save_model_location + '/' + filter_name + '.h5py'
-
-    model = None
-    if not retrain and model_name != None:
-        try:
-            model = keras.models.load_model(model_name)
-        except:
-            print('Error reading model \'{}\'; retraining & saving.'.format(model_name))
-
-    if model == None:
-        # CNN for learning CIFAR-10, based on this example:
-        # https://github.com/keras-team/keras/blob/master/examples/cifar10_cnn.py
-        # TODO Need to do some research to find a good image classifier CNN, then implement it.
-        #      Don't forget about regularizers!
-        #      Also consider constraints and initializers.
-        model = Sequential([
-            # Conv2D(filters, kernel_size, ...)
-            # Dropout(rate, ...)
-            # Dense(units, ...)
-            Conv2D(32, (3,3), padding='same', input_shape=input_shape, activation=relu),
-            Conv2D(32, (3,3), activation=relu),
-            MaxPooling2D(pool_size=(2,2)),
-            Dropout(0.25),
-
-            Conv2D(64, (3,3), padding='same', activation=relu),
-            Conv2D(64, (3,3), activation=relu),
-            MaxPooling2D(pool_size=(2, 2)),
-            Dropout(0.25),
-
-            Flatten(),
-            Dense(512, activation=relu),
-            Dropout(0.5),
-            Dense(num_classes, activation=softmax)
-        ])
-
-        # TODO Cross-validate to find best hyperparameters
-        model.compile(optimizer=keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True),
-                      loss=keras.losses.categorical_crossentropy,
-                      metrics=[keras.metrics.categorical_accuracy])
-
-
-        # TODO Don't use test set as validation set
-        train_generator      = datagen.flow(train_images, train_labels, batch_size=generator_batch_size)
-        validation_generator = datagen.flow(test_images,  test_labels,  batch_size=generator_batch_size)
-
-        model.fit_generator(train_generator,
-                            steps_per_epoch=len(train_images)/generator_batch_size,
-                            validation_data=validation_generator,
-                            validation_steps=len(test_images)/generator_batch_size,
-                            epochs=epochs,
-                            workers=generator_workers)
-
-        if model_name != None:
-            model.save(model_name)
-
-
-    test_loss, test_acc = model.evaluate_generator(
-            datagen.flow(test_images, test_labels, batch_size=generator_batch_size),
-            steps=len(test_images)/generator_batch_size)
-    print('Test accuracy: {}%'.format(test_acc*100))
-
-    attackFGM(model, datagen)
-    attackJSM(model, datagen)
-
-
+# TODO update
 def attackFGM(model, datagen, plot_images=5, save_image_location='atkimageFGM'):
 
     fgsm = FastGradientMethod(KerasModelWrapper(model), keras.backend.get_session())
@@ -161,26 +29,26 @@ def attackFGM(model, datagen, plot_images=5, save_image_location='atkimageFGM'):
 
 
     image_filter = datagen.preprocessing_function
-    filter_name = get_filter_name(image_filter)
+    model_name = get_model_name(image_filter)
 
     if plot_images > 0:
-        save_to_dir = create_image_folder(filter_name, save_image_location)
+        save_image_location = create_image_folder(save_image_location, model_name)
 
         # NOTE: Use a different generator here to show only the effects of the filter,
         #       and not of any other preprocessing step.
         filtergen = ImageDataGenerator(preprocessing_function=image_filter)
         adversarial_images = fgsm.generate_np(test_images[0:plot_images], **fgsm_params)
         image_generator = filtergen.flow(adversarial_images,
-                                         batch_size=1, shuffle=False, save_to_dir=save_to_dir)
+                                         batch_size=1, shuffle=False, save_to_dir=save_image_location)
 
         i = 0
         fig, axs = plt.subplots(2, plot_images)
         for batch_images in image_generator:
             ax = axs[0,i]
-            ax.imshow(test_images[i])
+            ax.imshow(ensure_is_plottable(test_images[i]))
             ax.set_axis_off()
             ax = axs[1,i]
-            ax.imshow(batch_images[0])
+            ax.imshow(ensure_is_plottable(batch_images[0]))
             ax.set_axis_off()
 
             i = i+1
@@ -214,10 +82,12 @@ def attackFGM(model, datagen, plot_images=5, save_image_location='atkimageFGM'):
     print('Adversarial accuracy (FGM): {0:.2f}%'.format(adv_acc*100))
 
 
+# TODO update
 def attackJSM(model, datagen, source_samples=3, save_image_location='atkimageJSM'):
 
     image_filter = datagen.preprocessing_function
-    save_to_dir = create_image_folder(get_filter_name(image_filter), save_image_location)
+    model_name = get_model_name(image_filter)
+    save_image_location = create_image_folder(save_image_location, model_name)
 
     print('Crafting ' + str(source_samples) + ' * ' + str(num_classes - 1) +
           ' adversarial examples')
@@ -278,7 +148,7 @@ def attackJSM(model, datagen, source_samples=3, save_image_location='atkimageJSM
 
             # NOTE batch_size=1 and steps=1 is only for one-at-a-time attacks
             preds = model.predict_generator(
-                        datagen.flow(adversarial_images, batch_size=1, save_to_dir=save_to_dir),
+                        datagen.flow(adversarial_images, batch_size=1, save_to_dir=save_image_location),
                         steps=1)
 
             # Check if success was achieved
@@ -325,22 +195,59 @@ def attackJSM(model, datagen, source_samples=3, save_image_location='atkimageJSM
     cleverhans.utils.grid_visual(grid_viz_data)
 
 
-def get_filter_name(image_filter):
-    name = image_filter.func.__name__
+def get_model_name(dataset, image_filter, epochs):
+    name = dataset.name + '-' + image_filter.func.__name__
     for key, value in image_filter.keywords.items():
         name += '-{}_{}'.format(key, value)
     name += '-e{}'.format(epochs)
     return name
 
+# ---------------------------- #
 
-def create_image_folder(filter_name, save_image_location):
-    save_to_dir = None
-    if save_image_location is not None and save_image_location != '':
-        save_to_dir = save_image_location + '/' + filter_name
-        os.makedirs(save_to_dir, exist_ok=True)
-    return save_to_dir
+def test_claw(claw):
+    test_loss, test_acc = claw.evaluate()
+    print('Test accuracy: {:.2f}%'.format(test_acc*100))
 
 
-main(plot_images=0)
-main(transformations.gaussian, filter_params={'sigma':2}),
-main(transformations.edge_detection_3d)
+dataset = DataSet.load_from_keras(keras.datasets.fashion_mnist)
+
+test_claw(Claw(dataset,
+    auto_train=True,
+    epochs=1))
+
+test_claw(Claw(dataset,
+    ImageProcessor(filters.gaussian, {'sigma':0.5}),
+    auto_train=True,
+    epochs=1))
+
+test_claw(Claw(dataset,
+    ImageProcessor(filters.sobel, {}, tr.compat2d, {'zca_whitening':True}),
+    auto_train=True,
+    epochs=1))
+
+
+dataset = DataSet.load_from_keras(keras.datasets.cifar10)
+
+test_claw(Claw(dataset,
+    auto_train=True,
+    epochs=1))
+
+test_claw(Claw(dataset,
+    ImageProcessor(filters.gaussian, {'sigma':1.5}),
+    auto_train=True,
+    epochs=1))
+
+test_claw(Claw(dataset,
+    ImageProcessor(filters.sobel, {}, each_channel, {'zca_whitening':True}),
+    auto_train=True,
+    epochs=1))
+
+test_claw(Claw(dataset,
+    ImageProcessor(filters.sobel, {}, hsv_value, {'zca_whitening':True}),
+    auto_train=True,
+    epochs=1))
+
+test_claw(Claw(dataset,
+    ImageProcessor(filters.sobel, {}, tr.to_gray, {'zca_whitening':True}),
+    auto_train=True,
+    epochs=1))
