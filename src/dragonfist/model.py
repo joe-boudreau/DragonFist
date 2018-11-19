@@ -1,23 +1,12 @@
 import keras
-from keras.models import Model, Sequential, load_model
-from keras.layers import Dense, Dropout, Activation, Flatten
-from keras.layers import Conv2D, MaxPooling2D
-from keras.activations import relu, softmax
 
 import os
 
 from data import DataSet
-from processing import ImageProcessor
+import processing
+from processing import ImageProcessParams
+from model_makers import *
 
-def get_optimizer_suffix(optimizer):
-    name = ''
-    for key, value in optimizer.get_config().items():
-        name += '-O{}_'.format(key)
-        if type(value) is float:
-            name += '{:.2f}'.format(value)
-        else:
-            name += '{}'.format(value)
-    return name
 
 def get_data_dims(dataset):
     """
@@ -28,35 +17,9 @@ def get_data_dims(dataset):
     return (dataset.input_shape, dataset.num_classes)
 
 
-# TODO Don't forget about trying initializers and regularizers
-
-def basic_cnn_model(input_shape, num_classes):
-    return Sequential([
-        Conv2D(32, (3,3), padding='same', input_shape=input_shape, activation=relu),
-        Conv2D(32, (3,3), activation=relu),
-        MaxPooling2D(pool_size=(2,2)),
-        #Dropout(0.25),
-
-        Conv2D(64, (3,3), padding='same', activation=relu),
-        Conv2D(64, (3,3), activation=relu),
-        MaxPooling2D(pool_size=(2, 2)),
-        #Dropout(0.25),
-
-        Flatten(),
-        Dense(512, activation=relu),
-        #Dropout(0.5),
-        Dense(num_classes, activation=softmax)
-    ])
-
-def basic_model(input_shape, num_classes):
-    return Sequential([
-        Flatten(input_shape=input_shape),
-        Dense(128, activation=relu),
-        Dense(num_classes, activation=softmax)
-    ])
-
-
 # Shared settings
+default_model = basic_cnn_model
+default_optimizer = keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
 # NOTE: By default, datagen.flow uses a batch size of 32.
 #       Tweak to find best tradeoff between runtime & memory.
 #       (Lower is slower, higher is more memory)
@@ -71,9 +34,9 @@ class Claw:
     A bundle of a Keras model, train/test data, hyperparameters, etc.
     """
 
-    def __init__(self, dataset, image_processor=ImageProcessor(),
-            model_maker=basic_cnn_model,
-            optimizer=keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True),
+    def __init__(self, dataset, image_process_params=ImageProcessParams(),
+            model_maker=default_model,
+            optimizer=default_optimizer,
             plot_images=5, save_image_location='genimage',
             auto_train=False, retrain=False, save_model_location='models',
             epochs=10):
@@ -85,9 +48,9 @@ class Claw:
 
         model_maker:
             A callable object that returns a Keras model, sized appropriately for the given dataset.
-            Should also have a __name__ property.
+            Preferably a Function. Must at least be callable and have a __name__ method.
 
-        image_processor:
+        image_process_params:
             An ImageProcessor object that will filter & preprocess images before sending them to the model.
 
         optimizer:
@@ -106,17 +69,20 @@ class Claw:
         """
 
         self._dataset = dataset
-        self._datagen = image_processor.prepare_datagen(self._dataset.train_images)
+        (self._datagen, self._name) = processing.create_image_processor(image_process_params, dataset)
 
         if plot_images > 0:
-            image_processor.plot(dataset.train_images[:plot_images], save_image_location)
+            has_preprocessing = image_process_params.preprocess_params != {}
+            processing.plot(dataset.train_images[:plot_images], self._datagen, self._name, has_preprocessing, save_image_location)
 
 
-        self._name = 'D{}-I{}-M{}{}'.format(
-            dataset.name,
-            image_processor.name,
-            model_maker.__name__,
-            get_optimizer_suffix(optimizer))
+        self._name += '-M{}'.format(model_maker.__name__)
+        for key, value in optimizer.get_config().items():
+            self._name += '-O{}_'.format(key)
+            if type(value) is float:
+                self._name += '{:.2f}'.format(value)
+            else:
+                self._name += '{}'.format(value)
 
 
         self._model = None
@@ -241,9 +207,10 @@ class Fist:
     An ensemble of multiple individual models sharing the same dataset and core structure,
     but each with a different kind of preprocessing applied to its input.
     """
-    def __init__(self, dataset, image_processors=[ImageProcessor()],
-            model_maker=basic_cnn_model,
-            optimizer=keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True),
+
+    def __init__(self, dataset, image_process_param_list=[ImageProcessParams()],
+            model_maker=default_model,
+            optimizer=default_optimizer,
             plot_images=5, save_image_location='genimage',
             epochs=10):
         """

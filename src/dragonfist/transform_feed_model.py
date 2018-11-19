@@ -15,8 +15,9 @@ import os
 import transformations as tr
 
 from data import DataSet
-from processing import ImageProcessor
-from model import *
+from processing import ImageProcessParams
+from model import Claw, Fist
+from model_makers import *
 
 
 # TODO update
@@ -216,12 +217,12 @@ test_claw(Claw(dataset,
     epochs=1))
 
 test_claw(Claw(dataset,
-    ImageProcessor(filters.gaussian, {'sigma':0.5}),
+    ImageProcessParams(filters.gaussian, {'sigma':0.5}),
     auto_train=True,
     epochs=1))
 
 test_claw(Claw(dataset,
-    ImageProcessor(filters.sobel, {}, tr.compat2d, {'zca_whitening':True}),
+    ImageProcessParams(filters.sobel, {}, tr.compat2d, {'zca_whitening':True}),
     auto_train=True,
     epochs=1))
 
@@ -233,21 +234,21 @@ test_claw(Claw(dataset,
     epochs=1))
 
 test_claw(Claw(dataset,
-    ImageProcessor(filters.gaussian, {'sigma':1.5}),
+    ImageProcessParams(filters.gaussian, {'sigma':1.5}),
     auto_train=True,
     epochs=1))
 
 test_claw(Claw(dataset,
-    ImageProcessor(filters.sobel, {}, each_channel, {'zca_whitening':True}),
+    ImageProcessParams(filters.sobel, {}, each_channel, {'zca_whitening':True}),
     auto_train=True,
     epochs=1))
 
 test_claw(Claw(dataset,
-    ImageProcessor(filters.sobel, {}, hsv_value, {'zca_whitening':True}),
+    ImageProcessParams(filters.sobel, {}, hsv_value, {'zca_whitening':True}),
     auto_train=True,
     epochs=1))
 
 test_claw(Claw(dataset,
-    ImageProcessor(filters.sobel, {}, tr.to_gray, {'zca_whitening':True}),
+    ImageProcessParams(filters.sobel, {}, tr.to_gray, {'zca_whitening':True}),
     auto_train=True,
     epochs=1))
