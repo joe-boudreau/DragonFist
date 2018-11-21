@@ -178,17 +178,23 @@ class Claw:
             subset="training",
             batch_size=generator_batch_size)
 
+        # Get the number of samples in the training subset
+        num_train = len(train_generator.x)
+
         validation_generator = self._datagen.flow(
             x_train,
             y_train,
             subset="validation",
             batch_size=generator_batch_size)
 
+        # Get the number of samples in the validation subset
+        num_validation = len(validation_generator.x)
+
         return self._model.fit_generator(
             train_generator,
-            steps_per_epoch=len(x_train)/generator_batch_size,
+            steps_per_epoch=num_train/generator_batch_size,
             validation_data=validation_generator,
-            validation_steps=len(x_train)/generator_batch_size,
+            validation_steps=num_validation/generator_batch_size,
             epochs=epochs,
             workers=generator_workers)
 
@@ -203,7 +209,7 @@ class Claw:
 
     def predict(self, x):
         predict_generator = self._datagen.flow(x, batch_size=generator_batch_size, shuffle=False)
-        return self._model.predict_generator(predict_generator, steps=x.shape[0]/generator_batch_size)
+        return self._model.predict_generator(predict_generator, steps=len(x)/generator_batch_size)
 
 
 class Fist:
