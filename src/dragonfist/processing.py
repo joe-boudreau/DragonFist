@@ -43,7 +43,7 @@ class ImageProcessParams:
         self.preprocess_params = preprocess_params
 
 
-def create_image_processor(params, dataset, fit_on_filtered=True):
+def create_image_processor(params, dataset, fit_on_filtered=True, validation_split=0.10):
     """
     Return a pair containing:
         -An ImageDataGenerator that will process images based on the passed set of parameters.
@@ -78,10 +78,7 @@ def create_image_processor(params, dataset, fit_on_filtered=True):
     for key, value in params.preprocess_params.items():
         name += '-P{}_{}'.format(key, value)
 
-    datagen = ImageDataGenerator(
-        preprocessing_function=image_filter,
-        **params.preprocess_params
-    )
+    datagen = ImageDataGenerator(preprocessing_function=image_filter, validation_split=validation_split, **params.preprocess_params)
 
     # Fit on training data
     if has_featurewise_preprocessing(datagen):

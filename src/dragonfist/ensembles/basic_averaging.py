@@ -4,14 +4,14 @@ import numpy as np
 
 class BasicAveragingEnsemble(Model):
 
-    def __init__(self, *models):
+    def __init__(self, *claws):
         super()._base_init("BasicAveragingEnsemble")
-        self._models = models
+        self._claws = claws
 
     def evaluate(self, x=None, y=None, **kwargs):
         num_samples = x.shape[0]
 
-        predictions = self.predict(x, )
+        predictions = self.predict(x)
 
         num_correct = 0
         for i in range(num_samples):
@@ -21,11 +21,11 @@ class BasicAveragingEnsemble(Model):
         return num_correct / num_samples
 
     def predict(self, x, **kwargs):
-        predictions = np.array([model.predict(x, ) for model in self._models])
+        predictions = np.array([claw.predict(x) for claw in self._claws])
         avg = np.zeros_like(predictions[0])
         for p in predictions:
             avg += p
-        return avg / len(self._models)
+        return avg / len(self._claws)
 
     def fit(self, x=None, y=None, batch_size=None, epochs=1, verbose=1, callbacks=None, validation_split=0.,
                 validation_data=None, shuffle=True, class_weight=None, sample_weight=None, initial_epoch=0,

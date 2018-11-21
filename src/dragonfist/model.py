@@ -1,8 +1,5 @@
-import keras
-
 import os
 
-from data import DataSet
 import processing
 from processing import ImageProcessParams
 from model_makers import *
@@ -14,7 +11,7 @@ def get_data_dims(dataset):
     instead of input_shape, num_classes.
     """
 
-    return (dataset.input_shape, dataset.num_classes)
+    return dataset.input_shape, dataset.num_classes
 
 
 # Shared settings
@@ -27,6 +24,7 @@ generator_batch_size=32
 # NOTE: Must pick good number of workers, especially if there
 #       will be ensemble-level parallelism too.
 generator_workers=1
+
 
 class Claw:
     """
@@ -154,7 +152,7 @@ class Claw:
         self._model.save(self._save_model_location + '/' + self._name + '.h5py')
 
 
-    def fit(self, epochs=0):
+    def fit(self, x_train=None, y_train=None, epochs=0):
         """
         Train the model on the dataset that it was given.
         If needed, could access the model & datagen directly and train with those.
@@ -166,39 +164,46 @@ class Claw:
         Returns the output of model.fit, namely a History object.
         Refer to Keras docs for how to use it.
         """
+        if x_train is None:
+            x_train = self._dataset.train_images
+        if y_train is None:
+            y_train = self._dataset.train_labels
+
         if epochs < 1:
             epochs = self._epochs
 
-        # TODO Use a dedicated validation set
         train_generator = self._datagen.flow(
-            self._dataset.train_images,
-            self._dataset.train_labels,
-            #subset="training",
+            x_train,
+            y_train,
+            subset="training",
             batch_size=generator_batch_size)
 
         validation_generator = self._datagen.flow(
-            self._dataset.test_images,
-            self._dataset.test_labels,
-            #subset="validation",
+            x_train,
+            y_train,
+            subset="validation",
             batch_size=generator_batch_size)
 
         return self._model.fit_generator(
             train_generator,
-            steps_per_epoch=len(self._dataset.train_images)/generator_batch_size,
+            steps_per_epoch=len(x_train)/generator_batch_size,
             validation_data=validation_generator,
-            validation_steps=len(self._dataset.test_images)/generator_batch_size,
+            validation_steps=len(x_train)/generator_batch_size,
             epochs=epochs,
             workers=generator_workers)
 
-    def evaluate(self):
-        evaluate_generator = self._datagen.flow(
-            self._dataset.test_images,
-            self._dataset.test_labels,
-            batch_size=generator_batch_size)
+    def evaluate(self, x_test=None, y_test=None):
+        if x_test is None:
+            x_test = self._dataset.test_images
+        if y_test is None:
+            y_test = self._dataset.test_labels
 
-        return self._model.evaluate_generator(
-            evaluate_generator,
-            steps=len(self._dataset.test_images)/generator_batch_size)
+        evaluate_generator = self._datagen.flow(x_test, y_test, batch_size=generator_batch_size)
+        return self._model.evaluate_generator(evaluate_generator, steps=len(x_test)/generator_batch_size)
+
+    def predict(self, x):
+        predict_generator = self._datagen.flow(x, batch_size=generator_batch_size, shuffle=False)
+        return self._model.predict_generator(predict_generator, steps=x.shape[0]/generator_batch_size)
 
 
 class Fist:
