@@ -12,35 +12,88 @@ from image_utils import ensure_is_plottable, create_image_folder
 def has_featurewise_preprocessing(datagen):
     return datagen.featurewise_center or datagen.featurewise_std_normalization or datagen.zca_whitening
 
+def get_preprocessing_suffix(preprocess_params):
+    suffix = ''
+    for key, value in preprocess_params.items():
+        suffix += '-P{}_{}'.format(key, value)
+    return suffix
 
-class ImageProcessParams:
-    """
-    A container for parameters for configuring an ImageDataGenerator.
-    Includes everything except for a dataset that the ImageDataGenerator will be fit on.
-    """
 
-    def __init__(self, image_filter=tr.identity, filter_params={}, adaptor=None, preprocess_params={}):
+class ImageFilter:
+    """Build a custom image filtering function."""
+
+    def __init__(self, filter_function=tr.identity, filter_params={}, adaptor=None):
         """
-        image_filter:
+        filter_function:
             A callable object whose first parameter is an image array.
             Any extra parameters must either have default values, or be set by filter_params.
             Preferably a Function. Must at least be callable and have a __name__ method.
 
         filter_params:
-            Extra arguments to pass into image_filter.
+            Extra arguments to pass into filter_function.
 
         adaptor:
-            A callable object whose first argument is image_filter, which it adapts to a desired dimensionality.
+            A callable object whose first argument is filter_function, which it adapts to a desired dimensionality.
+            Preferably a Function. Must at least be callable and have a __name__ method.
+        """
+
+        self._filter_function = filter_function
+        self._name = '{}'.format(self._filter_function.__name__)
+
+        if filter_params != {}:
+            self._filter_function = functools.partial(self._filter_function, **filter_params)
+            for key, value in filter_params.items():
+                self._name += '-{}_{}'.format(key, value)
+
+        if adaptor != None:
+            self._filter_function = functools.partial(adaptor, self._filter_function)
+            self._name += '-A{}'.format(adaptor.__name__)
+
+    @property
+    def filter_function(self):
+        return self._filter_function
+
+    @property
+    def name(self):
+        return self._name
+
+
+class ImageProcessParams:
+    """
+    A container for parameters for configuring an ImageDataGenerator.
+    Includes everything except for a dataset that the ImageDataGenerator will be fit on.
+    Builds a name to represent this set of parameters.
+    """
+
+    def __init__(self, filter_function=tr.identity, filter_params={}, adaptor=None, preprocess_params={}, image_filter=None):
+        """
+        filter_function:
+            A callable object whose first parameter is an image array.
+            Any extra parameters must either have default values, or be set by filter_params.
+            Preferably a Function. Must at least be callable and have a __name__ method.
+
+        filter_params:
+            Extra arguments to pass into filter_function.
+
+        adaptor:
+            A callable object whose first argument is filter_function, which it adapts to a desired dimensionality.
             Preferably a Function. Must at least be callable and have a __name__ method.
 
         preprocess_params:
             Preprocessing settings for the ImageDataGenerator that will be created by ImageProcessor.
+
+        image_filter:
+            An ImageFilter object. Can pass this in instead of specifying the previous arguments (excluding preprocess_params).
         """
 
-        self.image_filter = image_filter
-        self.filter_params = filter_params
-        self.adaptor = adaptor
+        self.image_filter = ImageFilter(filter_function, filter_params, adaptor) if image_filter is None else image_filter
         self.preprocess_params = preprocess_params
+        self.name = self.image_filter.name + get_preprocessing_suffix(preprocess_params)
+
+    # For convenience, expose the ImageFilter's inner function. I don't mind the feature envy.
+    @property
+    def filter_function(self):
+        return self.image_filter.filter_function
 
 
 def create_image_processor(params, dataset, fit_on_filtered=True, validation_split=0.10):
@@ -63,22 +116,11 @@ def create_image_processor(params, dataset, fit_on_filtered=True, validation_spl
         Only relevant when train_images is passed in.
     """
 
-    name = 'D{}-I{}'.format(dataset.name, params.image_filter.__name__)
-    for key, value in params.filter_params.items():
-        name += '-{}_{}'.format(key, value)
-
-    image_filter = params.image_filter
-    if params.filter_params != {}:
-        image_filter = functools.partial(image_filter, **params.filter_params)
-
-    if params.adaptor != None:
-        image_filter = functools.partial(params.adaptor, image_filter)
-        name += '-A{}'.format(params.adaptor.__name__)
-
-    for key, value in params.preprocess_params.items():
-        name += '-P{}_{}'.format(key, value)
-
-    datagen = ImageDataGenerator(preprocessing_function=image_filter, validation_split=validation_split, **params.preprocess_params)
+    name = 'D{}-I{}'.format(dataset.name, params.name)
+    datagen = ImageDataGenerator(
+        preprocessing_function=params.filter_function,
+        validation_split=validation_split,
+        **params.preprocess_params)
 
     # Fit on training data
     if has_featurewise_preprocessing(datagen):

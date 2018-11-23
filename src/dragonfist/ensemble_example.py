@@ -37,7 +37,7 @@ def main(train):
 
 
 def test_claw(claw, d):
-    test_loss, test_acc = claw.evaluate(d.test_images, d.test_labels)
+    test_acc = claw.evaluate(d.test_images, d.test_labels)
     print('Test accuracy: {:.2f}%'.format(test_acc*100))
 
 
