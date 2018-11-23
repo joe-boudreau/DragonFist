@@ -36,4 +36,4 @@ def main(image_filter=transformations.identity):
     print('Accuracy: {0}'.format(model.test_accuracy))
 
 #main()
-main(transformations.gaussian)
+main(transformations.average)

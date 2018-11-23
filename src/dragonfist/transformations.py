@@ -57,6 +57,61 @@ def gaussian(image, sigma=1):
         achieving at least ~80% accuracy on the training/test data. More distortion = higher robustness?"""
     return filters.gaussian(image, sigma)
 
+def average_rows(image):
+    num_cols = image.shape[1]
+
+    transformed_image = []
+
+    if (len(image.shape) == 3): #rgb
+        for row in image:
+            r = [row[i][0] for i in range(num_cols)]
+            g = [row[i][1] for i in range(num_cols)]
+            b = [row[i][2] for i in range(num_cols)]
+
+            average_r = float(sum(r)) / max(num_cols, 1)
+            average_g = float(sum(g)) / max(num_cols, 1)
+            average_b = float(sum(b)) / max(num_cols, 1)
+
+            transformed_row = [[average_r, average_g, average_b] for i in range(num_cols)]
+            transformed_image.append(transformed_row)
+    else: #b/w
+        for row in image:
+            average = float(sum(row[i] for i in range(num_cols))) / max(num_cols, 1)
+
+            transformed_row = [average for i in range(num_cols)]
+            transformed_image.append(transformed_row)
+
+    return np.array(transformed_image)
+
+def average_cols(image):
+    if (len(image.shape) == 3): #rgb
+        transformed_cols = []
+
+        for col in np.transpose(image, (1, 0, 2)):
+            num_rows = image.shape[1]
+
+            r = [col[i][0] for i in range(num_rows)]
+            g = [col[i][1] for i in range(num_rows)]
+            b = [col[i][2] for i in range(num_rows)]
+
+            average_r = float(sum(r)) / max(num_rows, 1)
+            average_g = float(sum(g)) / max(num_rows, 1)
+            average_b = float(sum(b)) / max(num_rows, 1)
+
+            transformed_col = [[average_r, average_g, average_b] for i in range(num_rows)]
+
+            transformed_cols.append(transformed_col)
+
+        return np.transpose(np.array(transformed_cols), (1, 0, 2))
+    else: #b/w
+        return np.transpose(
+            average_rows(
+                np.transpose(image)
+            )
+        )
+
+def average(image):
+    return average_rows(average_cols(image))
 
 # TODO It looks like this actually blurs images
 def sharpen(image):
