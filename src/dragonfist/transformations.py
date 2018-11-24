@@ -53,7 +53,6 @@ def edge_detection_3d_gray(image):
 def edge_detection_2d(image):
     return compat2d(edge_detection, image)
 
-
 def gabor_real(image, frequency=0.8):
     return filters.gabor(image, frequency)[0]
 
@@ -136,6 +135,37 @@ def average_cols(image):
 
 def average(image):
     return average_rows(average_cols(image))
+
+def remove_colors(image, colors):
+    if (len(image.shape) == 3): #rgb
+        num_cols = image.shape[1]
+
+        transformed_image = []
+
+        for row in image:
+            transformed_row = []
+
+            for i in range(num_cols):
+                transformed_row.append([
+                    row[i][0] if 'r' not in colors else 0,
+                    row[i][1] if 'g' not in colors else 0,
+                    row[i][2] if 'b' not in colors else 0
+                ])
+
+            transformed_image.append([transformed_row for i in range(num_cols)])
+
+        return np.array(transformed_image)
+    else:
+        return image
+
+def max(image, size=3):
+    return ndimage.filters.maximum_filter(image, size=size)
+
+def min(image, size=3):
+    return ndimage.filters.minimum_filter(image, size=size)
+
+def rank(image, r=1, size=3):
+    return ndimage.filters.rank_filter(image, r, size)
 
 # TODO It looks like this actually blurs images
 def sharpen(image):
