@@ -13,7 +13,7 @@ from image_utils import create_image_folder, ensure_is_plottable
 
 
 # NOTE claw can also be a palm, with the magic of duck typing. Should still clean this up
-def attackFGM(claw, dataset, plot_images=5, save_image_location='atkimageFGM'):
+def attackFGM(claw, dataset, plot_images=5, save_image_location='atkimageFGM', ensemble=None):
     """Attack a single (non-ensemble) model."""
 
     model = claw.model
@@ -68,6 +68,8 @@ def attackFGM(claw, dataset, plot_images=5, save_image_location='atkimageFGM'):
     num_images = len(images)
     num_correct = 0
     i_start = 0
+
+    num_correct_ensemble = 0
     while True:
         i_end = min(i_start+adv_batch_size, num_images)
         adversarial_images = fgsm.generate_np(images[i_start:i_end], **fgsm_params)
@@ -77,6 +79,12 @@ def attackFGM(claw, dataset, plot_images=5, save_image_location='atkimageFGM'):
                         np.argmax(preds, axis=1) ==
                         np.argmax(labels[i_start:i_end], axis=1))
 
+        if ensemble != None:
+            preds_ensemble = ensemble.predict(adversarial_images)
+            num_correct_ensemble += np.sum(
+                        np.argmax(preds_ensemble, axis=1) ==
+                        np.argmax(labels[i_start:i_end], axis=1))
+
         if i_end == num_images:
             break
         else:
@@ -84,6 +92,10 @@ def attackFGM(claw, dataset, plot_images=5, save_image_location='atkimageFGM'):
 
     adv_acc = num_correct/num_images
     print('Adversarial accuracy (FGM): {0:.2f}%'.format(adv_acc*100))
+
+    if ensemble != None:
+        adv_acc_e = num_correct_ensemble/num_images
+        print('Ensemble adversarial accuracy (FGM): {0:.2f}%'.format(adv_acc_e*100))
 
 
 # TODO update for claw/palm

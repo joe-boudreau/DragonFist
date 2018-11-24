@@ -9,6 +9,7 @@ from processing import ImageProcessParams
 from model import Claw
 from model_makers import *
 
+from attacks import attackFGM
 
 def main(train):
 
@@ -34,6 +35,11 @@ def main(train):
     ensemble.evaluate(x_test, y_test)
     p = ensemble.predict(x[:1]).argmax()
     print("prediction for image 0: " + str(p))
+
+
+    attackFGM(claw1, dataset, ensemble=ensemble)
+    attackFGM(claw2, dataset, ensemble=ensemble)
+    attackFGM(claw3, dataset, ensemble=ensemble)
 
 
 def test_claw(claw, d):
