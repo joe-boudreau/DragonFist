@@ -133,9 +133,8 @@ class Claw:
         print('Model name (with epoch count): {}'.format(self.get_model_filepath(epochs)))
 
         if retrain or epoch_checkpoint < epochs:
-            epochs_to_train = epochs - epoch_checkpoint
-            print('Training for {}/{} epoch(s)'.format(epochs_to_train, epochs))
-            self.fit(epochs=epochs_to_train)
+            print('Training for {} epoch(s), starting at {}'.format(epochs, epoch_checkpoint))
+            self.fit(epochs=epochs, initial_epoch=epoch_checkpoint)
             if save_model_location != None and save_model_location != '':
                 self.save_model(epochs)
 
@@ -179,7 +178,7 @@ class Claw:
         self._model.save(self.get_model_filepath(epochs))
 
 
-    def fit(self, x_train=None, y_train=None, epochs=0):
+    def fit(self, x_train=None, y_train=None, epochs=0, initial_epoch=0):
         """
         Train the model on the dataset that it was given.
         If needed, could access the model & datagen directly and train with those.
@@ -223,6 +222,7 @@ class Claw:
             validation_data=validation_generator,
             validation_steps=num_validation/generator_batch_size,
             epochs=epochs,
+            initial_epoch=initial_epoch,
             workers=generator_workers)
 
     def evaluate(self, x_test=None, y_test=None):
@@ -314,9 +314,8 @@ class Palm:
         print('Model name (with epoch count): {}'.format(self.get_model_filepath(epochs)))
 
         if retrain or epoch_checkpoint < epochs:
-            epochs_to_train = epochs - epoch_checkpoint
-            print('Training for {}/{} epoch(s)'.format(epochs_to_train, epochs))
-            self.fit(epochs=epochs_to_train)
+            print('Training for {} epoch(s), starting at {}'.format(epochs, epoch_checkpoint))
+            self.fit(epochs=epochs, initial_epoch=epoch_checkpoint)
             if save_model_location != None and save_model_location != '':
                 self.save_model(epochs)
 
@@ -368,7 +367,7 @@ class Palm:
         self._model.save(self.get_model_filepath(epochs))
 
 
-    def fit(self, x_train=None, y_train=None, epochs=0):
+    def fit(self, x_train=None, y_train=None, epochs=0, initial_epoch=0):
         """
         """
         if x_train is None:
@@ -405,6 +404,7 @@ class Palm:
                 validation_data=validation_generator,
                 validation_steps=num_validation/generator_batch_size,
                 epochs=epochs,
+                initial_epoch=initial_epoch,
                 workers=generator_workers)
 
         return latest_history
