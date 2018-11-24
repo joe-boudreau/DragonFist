@@ -78,7 +78,16 @@ class Claw:
         save_model_location:
             The folder where models should be loaded from / saved to.
             If the model is trained during this constructor, it will be saved to disk.
+
+        epochs:
+            Number of epochs to train the model with, if it will be trained.
+            Setting this to 0 or lower disables training.
         """
+
+        if epochs <= 0:
+            auto_train = False
+            retrain = False
+            epochs = 0
 
         self._dataset = dataset
         (self._datagen, self._name) = processing.create_image_processor(image_process_params, dataset)
@@ -90,17 +99,20 @@ class Claw:
 
         self._name += '-M{}'.format(model_maker.__name__)
         self._name += get_optimizer_suffix(optimizer)
-        # TODO pre-trained models should also get the epoch count in their name
 
         self._model = None
         if save_model_location != None and save_model_location != '':
             self._save_model_location = save_model_location
             if auto_train and not retrain:
-                model_filepath = self.model_filepath
-                try:
-                    self._model = load_model(model_filepath)
-                except:
-                    print('***Error reading model \'{}\'. Creating new model.***'.format(model_filepath))
+                epoch_checkpoint = epochs
+                while epoch_checkpoint > 0:
+                    try:
+                        self._model = load_model(self.get_model_filepath(epoch_checkpoint))
+                        break
+                    except:
+                        epoch_checkpoint -= 1
+                if epoch_checkpoint == 0:
+                    print('***Error reading model. Creating new one.***')
                     retrain = True
         else:
             # If saving manually later via 'save_model', save to current directory.
@@ -118,10 +130,14 @@ class Claw:
 
         self._epochs = epochs
 
-        if retrain:
-            self.fit()
+        print('Model name (with epoch count): {}'.format(self.get_model_filepath(epochs)))
+
+        if retrain or epoch_checkpoint < epochs:
+            epochs_to_train = epochs - epoch_checkpoint
+            print('Training for {}/{} epoch(s)'.format(epochs_to_train, epochs))
+            self.fit(epochs=epochs_to_train)
             if save_model_location != None and save_model_location != '':
-                self.save_model()
+                self.save_model(epochs)
 
     @property
     def model(self):
@@ -144,12 +160,14 @@ class Claw:
         """
         return self._name
 
-    @property
-    def model_filepath(self):
+    def get_model_filepath(self, epoch_checkpoint=0):
         """The path that helper methods will use to save/load the owned Keras model."""
-        return self._save_model_location + '/' + self._name + '.h5py'
+        if epoch_checkpoint > 0:
+            return '{}/{}-e{}.h5py'.format(self._save_model_location, self._name, epoch_checkpoint)
+        else:
+            return '{}/{}.h5py'.format(self._save_model_location, self._name)
 
-    def save_model(self):
+    def save_model(self, epochs=0):
         """
         Convenience method to save the owned Keras model with a name based on its properties.
         If a save location was passed to the constructor, it will be saved there.
@@ -158,7 +176,7 @@ class Claw:
         Can still call 'model.save(path)' directly.
         """
         os.makedirs(self._save_model_location, exist_ok=True)
-        self._model.save(self._save_model_location + '/' + self._name + '.h5py')
+        self._model.save(self.get_model_filepath(epochs))
 
 
     def fit(self, x_train=None, y_train=None, epochs=0):
@@ -227,12 +245,18 @@ class Palm:
     Package-Aggregate Learning Model.
     Trains a model on differently-filtered versions of the same training set.
     """
+    # TODO deal with momentum & decay...
     def __init__(self, dataset, extra_filters=[], preprocess_params={},
             model_maker=default_model,
-            optimizer=default_optimizer,
+            optimizer=keras.optimizers.SGD(lr=0.01),
             plot_images=5, save_image_location='genimage',
             auto_train=False, retrain=False, save_model_location='models',
             epochs=10):
+
+        if epochs <= 0:
+            auto_train = False
+            retrain = False
+            epochs = 0
 
         self._dataset = dataset
         self._name = 'D{}'.format(dataset.name)
@@ -261,11 +285,15 @@ class Palm:
         if save_model_location != None and save_model_location != '':
             self._save_model_location = save_model_location
             if auto_train and not retrain:
-                model_filepath = self.model_filepath
-                try:
-                    self._model = load_model(model_filepath)
-                except:
-                    print('***Error reading model \'{}\'. Creating new model.***'.format(model_filepath))
+                epoch_checkpoint = epochs
+                while epoch_checkpoint > 0:
+                    try:
+                        self._model = load_model(self.get_model_filepath(epoch_checkpoint))
+                        break
+                    except:
+                        epoch_checkpoint -= 1
+                if epoch_checkpoint == 0:
+                    print('***Error reading model, creating new one.***')
                     retrain = True
         else:
             # If saving manually later via 'save_model', save to current directory.
@@ -283,10 +311,16 @@ class Palm:
 
         self._epochs = epochs
 
-        if retrain:
-            self.fit()
+        print('Model name (with epoch count): {}'.format(self.get_model_filepath(epochs)))
+
+        if retrain or epoch_checkpoint < epochs:
+            epochs_to_train = epochs - epoch_checkpoint
+            print('Training for {}/{} epoch(s)'.format(epochs_to_train, epochs))
+            self.fit(epochs=epochs_to_train)
             if save_model_location != None and save_model_location != '':
-                self.save_model()
+                self.save_model(epochs)
+
+    # TODO most of these are copied from Claw, ugly, horrible...
 
     @property
     def model(self):
@@ -315,7 +349,14 @@ class Palm:
         """
         return self._name
 
-    def save_model(self):
+    def get_model_filepath(self, epoch_checkpoint=0):
+        """The path that helper methods will use to save/load the owned Keras model."""
+        if epoch_checkpoint > 0:
+            return '{}/{}-e{}.h5py'.format(self._save_model_location, self._name, epoch_checkpoint)
+        else:
+            return '{}/{}.h5py'.format(self._save_model_location, self._name)
+
+    def save_model(self, epochs=0):
         """
         Convenience method to save the owned Keras model with a name based on its properties.
         If a save location was passed to the constructor, it will be saved there.
@@ -324,13 +365,8 @@ class Palm:
         Can still call 'model.save(path)' directly.
         """
         os.makedirs(self._save_model_location, exist_ok=True)
-        self._model.save(self._save_model_location + '/' + self._name + '.h5py')
+        self._model.save(self.get_model_filepath(epochs))
 
-
-    @property
-    def model_filepath(self):
-        """The path that helper methods will use to save/load the owned Keras model."""
-        return self._save_model_location + '/' + self._name + '.h5py'
 
     def fit(self, x_train=None, y_train=None, epochs=0):
         """
