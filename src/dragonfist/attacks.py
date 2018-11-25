@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from matplotlib import cm
 import numpy as np
 
-from image_utils import create_image_folder, ensure_is_plottable
+from image_utils import *
 
 
 # NOTE claw can also be a palm, with the magic of duck typing. Should still clean this up
@@ -41,10 +41,8 @@ def attackFGM(claw, dataset, plot_images=5, save_image_location='atkimageFGM', e
         image_generator = filtergen.flow(adversarial_images,
                                          batch_size=1, shuffle=False, save_to_dir=save_image_location)
 
-        if images.shape[-1] == 1 or len(images.shape[1:]) == 2:
-            cmap = cm.gray
-        else:
-            cmap = None
+        # If plotting 2d images, use a grayscale color map
+        cmap = get_cmap_for_images(images)
 
         i = 0
         fig, axs = plt.subplots(2, plot_images)
@@ -67,33 +65,51 @@ def attackFGM(claw, dataset, plot_images=5, save_image_location='atkimageFGM', e
     adv_batch_size = generator_batch_size*10
     num_images = len(images)
     num_correct = 0
-    i_start = 0
-
-    num_correct_ensemble = 0
-    while True:
-        i_end = min(i_start+adv_batch_size, num_images)
-        adversarial_images = fgsm.generate_np(images[i_start:i_end], **fgsm_params)
-
-        preds = claw.predict(adversarial_images)
-        num_correct += np.sum(
-                        np.argmax(preds, axis=1) ==
-                        np.argmax(labels[i_start:i_end], axis=1))
-
-        if ensemble != None:
-            preds_ensemble = ensemble.predict(adversarial_images)
-            num_correct_ensemble += np.sum(
-                        np.argmax(preds_ensemble, axis=1) ==
-                        np.argmax(labels[i_start:i_end], axis=1))
-
-        if i_end == num_images:
-            break
-        else:
-            i_start+=adv_batch_size
-
-    adv_acc = num_correct/num_images
-    print('Adversarial accuracy (FGM): {0:.2f}%'.format(adv_acc*100))
+    img_start = 0
 
     if ensemble != None:
+        num_correct_ensemble = 0
+        num_correct_other = []
+        for i in range(ensemble.num_claws):
+            num_correct_other.append(0)
+
+    while True:
+        img_end = min(img_start+adv_batch_size, num_images)
+        adversarial_images = fgsm.generate_np(images[img_start:img_end], **fgsm_params)
+
+        num_correct += np.sum(
+                        np.argmax(claw.predict(adversarial_images), axis=1) ==
+                        np.argmax(labels[img_start:img_end], axis=1))
+
+        if ensemble != None:
+            # Are adv. examples transferable to other models?
+            for i in range(ensemble.num_claws):
+                other_claw = ensemble.claws[i]
+                if other_claw == claw: continue
+                num_correct_other[i] += np.sum(
+                                np.argmax(other_claw.predict(adversarial_images), axis=1) ==
+                                np.argmax(labels[img_start:img_end], axis=1))
+
+            # Are adv. examples transferable to the ensemble model?
+            num_correct_ensemble += np.sum(
+                        np.argmax(ensemble.predict(adversarial_images), axis=1) ==
+                        np.argmax(labels[img_start:img_end], axis=1))
+
+        if img_end == num_images:
+            break
+        else:
+            img_start+=adv_batch_size
+
+    adv_acc = num_correct/num_images
+    print('Adversarial accuracy (FGM) on main  model ({0}): {1:.2f}%'.format(claw.name, adv_acc*100))
+
+    if ensemble != None:
+        for i in range(ensemble.num_claws):
+            other_claw = ensemble.claws[i]
+            if other_claw == claw: continue
+            adv_acc_other = num_correct_other[i]/num_images
+            print('Adversarial accuracy (FGM) on other model ({0}): {1:.2f}%'.format(other_claw.name, adv_acc_other*100))
+
         adv_acc_e = num_correct_ensemble/num_images
         print('Ensemble adversarial accuracy (FGM): {0:.2f}%'.format(adv_acc_e*100))
 

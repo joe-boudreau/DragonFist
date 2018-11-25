@@ -6,7 +6,7 @@ from matplotlib import cm
 import functools
 
 import transformations as tr
-from image_utils import ensure_is_plottable, create_image_folder
+from image_utils import *
 
 
 def has_featurewise_preprocessing(datagen):
@@ -180,10 +180,7 @@ def plot(images, datagen, title, plot_preprocessing, save_image_location='genima
     flow_params = {'batch_size':1, 'shuffle':False, 'save_to_dir':save_image_location}
 
     # If plotting 2d images, use a grayscale color map
-    if images.shape[-1] == 1 or len(images.shape[1:]) == 2:
-        cmap = cm.gray
-    else:
-        cmap = None
+    cmap = get_cmap_for_images(images)
 
     i = 0
     for batch_images in filtergen.flow(images, **flow_params):

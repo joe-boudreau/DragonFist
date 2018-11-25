@@ -1,3 +1,4 @@
+from matplotlib import cm
 import os
 
 def ensure_is_plottable(image_array):
@@ -16,3 +17,10 @@ def create_image_folder(save_image_location, category_name):
         save_image_location += '/' + category_name
         os.makedirs(save_image_location, exist_ok=True)
     return save_image_location
+
+
+def get_cmap_for_images(images):
+    if images.shape[-1] == 1 or len(images.shape[1:]) == 2:
+        return cm.gray
+    else:
+        return None

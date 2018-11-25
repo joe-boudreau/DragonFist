@@ -10,6 +10,14 @@ class Stacking:
 
         self._ensemble = LogisticRegression(random_state=0, solver="lbfgs", multi_class="multinomial", max_iter=200)
 
+    @property
+    def num_claws(self):
+        return len(self._claws)
+
+    @property
+    def claws(self):
+        return self._claws
+
     def evaluate(self, x, y):
         claws_test_preds = self._claw_predictions(x)
 
@@ -39,7 +47,6 @@ class Stacking:
         y = np.array([yi.argmax() for yi in y[:, ]])
 
         self._ensemble.fit(claws_train_preds, y)
-        return self.evaluate(x_test, y_test)
 
     def _claw_predictions(self, x):
         # Generate train and test sets of shape (number of samples, number of categories, number of claws)
