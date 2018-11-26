@@ -198,3 +198,10 @@ def increase_contrast_saturated(image):
     p = 5
     (v_min, v_max) = np.percentile(image, (p, 100-p))
     return skimage.exposure.rescale_intensity(image, in_range=(v_min, v_max))
+
+def median(image):
+    """
+    TODO:I don't know how to input the parameters(size) of median_filter through palm, so I simpily change the param size in 
+    ndimage into a constant number size = 5. Seems that preprocess_params is used to solve this problem 
+    """
+    return ndimage.median_filter(image,size = 5)
