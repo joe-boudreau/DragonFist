@@ -201,7 +201,27 @@ def increase_contrast_saturated(image):
 
 def median(image):
     """
-    TODO:I don't know how to input the parameters(size) of median_filter through palm, so I simpily change the param size in 
-    ndimage into a constant number size = 5. Seems that preprocess_params is used to solve this problem 
+    TODO:I don't know how to input the parameters(size) of median_filter through palm, so I simpily make the size = 5 here.
+    Seems that preprocess_params is used to solve this problem 
     """
     return ndimage.median_filter(image,size=5)
+
+def uniform(image):
+    
+    return ndimage.uniform_filter(image)
+
+def Laplace(image):
+    
+    return ndimage.laplace(image)
+
+def gaussian_second_deri(image):
+    """
+    TODO:need to change the input of sigma here. Using gaussian second derivatives.
+    """
+    return ndimage.gaussian_laplace(image,sigma=2)
+
+def Prewitt(image):
+    """
+    
+    """
+    return ndimage.prewitt(image)
