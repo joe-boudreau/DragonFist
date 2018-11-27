@@ -8,7 +8,7 @@ class DataSet:
     More classmethods could be added to this to load different types of datasets.
     """
 
-    def __init__(self, keras_dataset=None, rescale=1):
+    def __init__(self, keras_dataset=None, rescale=1, dtype=None):
         """
         Prepare a dataset from one of the keyword arguments.
         Currently the only one is a Keras dataset, but more could be added.
@@ -32,7 +32,7 @@ class DataSet:
         else:
             raise ValueError('Need to pass data to load in.')
 
-        self.initialize(rescale)
+        self.initialize(rescale, dtype)
 
     @property
     def num_classes(self):
@@ -64,12 +64,12 @@ class DataSet:
 
 
     @classmethod
-    def load_from_keras(cls, keras_dataset, rescale=1/255.0):
+    def load_from_keras(cls, keras_dataset, rescale=1/255.0, dtype=None):
         """Create a dataset from a Keras dataset."""
-        return cls(keras_dataset=keras_dataset, rescale=rescale)
+        return cls(keras_dataset=keras_dataset, rescale=rescale, dtype=dtype)
 
 
-    def initialize(self, rescale):
+    def initialize(self, rescale, dtype=None):
         """Prepare loaded data. Preparations are the same for all kinds of loaded data."""
 
         if rescale != 1:
@@ -93,3 +93,9 @@ class DataSet:
             self._test_labels,
             self._num_classes
         )
+
+        if dtype is not None:
+            self._train_images = self.train_images.astype(dtype)
+            self._test_images = self.test_images.astype(dtype)
+            self._train_labels = self.train_labels.astype(dtype)
+            self._test_labels = self.test_labels.astype(dtype)

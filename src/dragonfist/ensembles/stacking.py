@@ -24,7 +24,6 @@ class Stacking:
         y = np.array([yi.argmax() for yi in y[:, ]])
         score = self._ensemble.score(claws_test_preds, y)
 
-        print("Ensemble fit prediction scoring: " + str(score))
         return score
 
     def predict(self, x):
