@@ -314,10 +314,11 @@ class Palm:
         print('Model name (with epoch count): {}'.format(self.get_model_filepath(epochs)))
 
         if retrain or epoch_checkpoint < epochs:
-            print('Training for {} epoch(s), starting at {}'.format(epochs, epoch_checkpoint))
-            self.fit(epochs=epochs, initial_epoch=epoch_checkpoint)
-            if save_model_location != None and save_model_location != '':
-                self.save_model(epochs)
+            for current_epoch in range(epoch_checkpoint, epochs):
+                print('Training epoch {} (started at {})'.format(current_epoch + 1, epoch_checkpoint))
+                self.fit(epochs=current_epoch + 1, initial_epoch=current_epoch)
+                if save_model_location != None and save_model_location != '':
+                    self.save_model(current_epoch + 1)
 
     # TODO most of these are copied from Claw, ugly, horrible...
 
