@@ -100,11 +100,15 @@ class Claw:
         self._name += '-M{}'.format(model_maker.__name__)
         self._name += get_optimizer_suffix(optimizer)
 
+        if retrain:
+            epoch_checkpoint = 0
+        else:
+            epoch_checkpoint = epochs
+
         self._model = None
         if save_model_location != None and save_model_location != '':
             self._save_model_location = save_model_location
             if auto_train and not retrain:
-                epoch_checkpoint = epochs
                 while epoch_checkpoint > 0:
                     try:
                         self._model = load_model(self.get_model_filepath(epoch_checkpoint))
