@@ -30,6 +30,7 @@ def get_optimizer_suffix(optimizer):
 # Shared settings
 default_model = basic_cnn_model
 default_optimizer = keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+default_optimizer_static = keras.optimizers.SGD(lr=0.01)
 # NOTE: By default, datagen.flow uses a batch size of 32.
 #       Tweak to find best tradeoff between runtime & memory.
 #       (Lower is slower, higher is more memory)
@@ -252,7 +253,7 @@ class Palm:
     # TODO deal with momentum & decay...
     def __init__(self, dataset, extra_filters=[], preprocess_params={},
             model_maker=default_model,
-            optimizer=keras.optimizers.SGD(lr=0.01),
+            optimizer=default_optimizer_static,
             plot_images=5, save_image_location='genimage',
             auto_train=False, retrain=False, save_model_location='models',
             epochs=10):
@@ -322,11 +323,10 @@ class Palm:
         print('Model name (with epoch count): {}'.format(self.get_model_filepath(epochs)))
 
         if retrain or epoch_checkpoint < epochs:
-            for current_epoch in range(epoch_checkpoint, epochs):
-                print('Training epoch {} (started at {})'.format(current_epoch + 1, epoch_checkpoint))
-                self.fit(epochs=current_epoch + 1, initial_epoch=current_epoch)
-                if save_model_location != None and save_model_location != '':
-                    self.save_model(current_epoch + 1)
+            print('Training for {} epoch(s), starting at {}'.format(epochs, epoch_checkpoint))
+            self.fit(epochs=epochs, initial_epoch=epoch_checkpoint)
+            if save_model_location != None and save_model_location != '':
+                self.save_model(epochs)
 
     # TODO most of these are copied from Claw, ugly, horrible...
 
@@ -388,33 +388,34 @@ class Palm:
             epochs = self._epochs
 
         latest_history = None
-        for datagen in self._datagens:
-            train_generator = datagen.flow(
-                x_train,
-                y_train,
-                subset="training",
-                batch_size=generator_batch_size)
+        for current_epoch in range(initial_epoch, epochs):
+            for datagen in self._datagens:
+                train_generator = datagen.flow(
+                    x_train,
+                    y_train,
+                    subset="training",
+                    batch_size=generator_batch_size)
 
-            # Get the number of samples in the training subset
-            num_train = len(train_generator.x)
+                # Get the number of samples in the training subset
+                num_train = len(train_generator.x)
 
-            validation_generator = datagen.flow(
-                x_train,
-                y_train,
-                subset="validation",
-                batch_size=generator_batch_size)
+                validation_generator = datagen.flow(
+                    x_train,
+                    y_train,
+                    subset="validation",
+                    batch_size=generator_batch_size)
 
-            # Get the number of samples in the validation subset
-            num_validation = len(validation_generator.x)
+                # Get the number of samples in the validation subset
+                num_validation = len(validation_generator.x)
 
-            latest_history = self._model.fit_generator(
-                train_generator,
-                steps_per_epoch=num_train/generator_batch_size,
-                validation_data=validation_generator,
-                validation_steps=num_validation/generator_batch_size,
-                epochs=epochs,
-                initial_epoch=initial_epoch,
-                workers=generator_workers)
+                latest_history = self._model.fit_generator(
+                    train_generator,
+                    steps_per_epoch=num_train/generator_batch_size,
+                    validation_data=validation_generator,
+                    validation_steps=num_validation/generator_batch_size,
+                    epochs=current_epoch+1,
+                    initial_epoch=current_epoch,
+                    workers=generator_workers)
 
         return latest_history
 
