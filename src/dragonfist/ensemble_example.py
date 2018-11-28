@@ -9,7 +9,12 @@ from processing import ImageProcessParams
 from model import Claw
 from model_makers import *
 
-from attacks import attackFGM
+from attacks import attackFGM, attackJSM
+
+# IGNORE WARNINGS. They're annoying
+import warnings
+warnings.filterwarnings('ignore')
+
 
 def main(train):
 
@@ -31,15 +36,17 @@ def main(train):
     y = dataset.train_labels
     y_test = dataset.test_labels
 
-    val_acc = ensemble.fit(x=x, y=y)
-    print("Ensemble fit validation accuracy: " + str(val_acc))
-
+    ensemble.fit(x=x, y=y)
     test_acc = ensemble.evaluate(x_test, y_test)
     print("Ensemble test set accuracy: " + str(test_acc))
 
     attackFGM(claw1, dataset, ensemble=ensemble)
     attackFGM(claw2, dataset, ensemble=ensemble)
     attackFGM(claw3, dataset, ensemble=ensemble)
+
+    attackJSM(claw1, dataset, ensemble=ensemble)
+    attackJSM(claw2, dataset, ensemble=ensemble)
+    attackJSM(claw3, dataset, ensemble=ensemble)
 
 
 def test_claw(claw, d):

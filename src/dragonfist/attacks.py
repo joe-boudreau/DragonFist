@@ -56,12 +56,15 @@ def attackFGM(entity, dataset, plot_images=5, save_image_location='atkimageFGM',
         cmap = get_cmap_for_images(test_images)
 
         i = 0
-        fig, axs = plt.subplots(2, plot_images)
+        fig, axs = plt.subplots(3, plot_images)
         for batch_images in image_generator:
             ax = axs[0,i]
             ax.imshow(ensure_is_plottable(test_images[i]), cmap=cmap)
             ax.set_axis_off()
             ax = axs[1,i]
+            ax.imshow(ensure_is_plottable(adversarial_images[i]), cmap=cmap)
+            ax.set_axis_off()
+            ax = axs[2,i]
             ax.imshow(ensure_is_plottable(batch_images[0]), cmap=cmap)
             ax.set_axis_off()
 
@@ -121,10 +124,10 @@ def attackFGM(entity, dataset, plot_images=5, save_image_location='atkimageFGM',
             print('Adversarial accuracy (FGM) on other model ({0}): {1:.2f}%'.format(other_claw.name, adv_acc_other*100))
 
         adv_acc_e = num_correct_ensemble/num_images
-        print('Ensemble adversarial accuracy (FGM): {0:.2f}%'.format(adv_acc_e*100))
+        print('Adversarial accuracy (FGM) on ensemble model: {0:.2f}%'.format(adv_acc_e*100))
 
 
-def attackJSM(entity, dataset, source_samples=3):
+def attackJSM(entity, dataset, source_samples=3, ensemble=None):
     num_classes = dataset.num_classes
 
     image_filter = entity.datagen.preprocessing_function
@@ -134,6 +137,11 @@ def attackJSM(entity, dataset, source_samples=3):
 
     # Keep track of success (adversarial example classified in target)
     results = np.zeros((num_classes, source_samples), dtype='i')
+    if ensemble != None:
+        results_ensemble = np.zeros((num_classes, source_samples), dtype='i')
+        results_other = []
+        for i in range(ensemble.num_claws):
+            results_other.append(np.zeros((num_classes, source_samples), dtype='i'))
 
     # Rate of perturbed features for each test set example and target class
     perturbations = np.zeros((num_classes, source_samples), dtype='f')
@@ -190,9 +198,21 @@ def attackJSM(entity, dataset, source_samples=3):
             filtered_adversarial_image = image_filter(np.squeeze(adversarial_images)).reshape(dataset.input_shape)
 
             preds = entity.predict(adversarial_images)
-
-            # Check if success was achieved
             res = np.sum(np.argmax(preds, axis=1) == target)
+
+            if ensemble != None:
+                # Are adv. examples transferable to other models?
+                res_other = []
+                for i in range(ensemble.num_claws):
+                    res_other.append(0)
+                    other_claw = ensemble.claws[i]
+                    if other_claw == entity: continue
+                    preds_other = other_claw.predict(adversarial_images)
+                    res_other[i] = np.sum(np.argmax(preds_other, axis=1) == target)
+
+                # Are adv. examples transferable to the ensemble model?
+                preds_ensemble = ensemble.predict(adversarial_images)
+                res_ensemble = np.sum(np.argmax(preds_ensemble, axis=1) == target)
 
             # Compute number of modified features
             adversarial_image_reshape = adversarial_images.reshape(-1)
@@ -210,6 +230,13 @@ def attackJSM(entity, dataset, source_samples=3):
 
             # Update the arrays for later analysis
             results[target, attack_num] = res
+            if ensemble != None:
+                for i in range(ensemble.num_claws):
+                    other_claw = ensemble.claws[i]
+                    if other_claw == entity: continue
+                    results_other[i][target, attack_num] = res_other[i]
+                results_ensemble[target, attack_num] = res_ensemble
+
             perturbations[target, attack_num] = percent_perturb
 
         attack_num += 1
@@ -219,7 +246,18 @@ def attackJSM(entity, dataset, source_samples=3):
     # Compute the number of adversarial examples that were successfully found
     num_targets_tried = ((num_classes - 1) * source_samples)
     succ_rate = float(np.sum(results)) / num_targets_tried
-    print('Avg. rate of successful adv. examples {0:.2f}'.format(succ_rate*100))
+    print('Avg. rate of successful adv. examples on main  model ({0}): {1:.2f}'.format(entity.name, succ_rate*100))
+
+    if ensemble != None:
+        for i in range(ensemble.num_claws):
+            other_claw = ensemble.claws[i]
+            if other_claw == entity: continue
+            succ_rate = float(np.sum(results_other[i])) / num_targets_tried
+            print('Avg. rate of successful adv. examples on other model ({0}): {1:.2f}'.format(other_claw.name, succ_rate*100))
+
+        succ_rate = float(np.sum(results_ensemble)) / num_targets_tried
+        print('Avg. rate of successful adv. examples on ensemble model: {0:.2f}'.format(succ_rate*100))
+
 
     # Compute the average distortion introduced by the algorithm
     percent_perturbed = np.mean(perturbations)
@@ -228,7 +266,19 @@ def attackJSM(entity, dataset, source_samples=3):
     # Compute the average distortion introduced for successful samples only
     percent_perturb_succ = np.mean(perturbations * (results == 1))
     print('Avg. rate of perturbed features for successful '
-          'adversarial examples {0:.2f}'.format(percent_perturb_succ*100))
+          'adversarial examples for main  model ({0}): {1:.2f}'.format(entity.name, percent_perturb_succ*100))
+
+    if ensemble != None:
+        for i in range(ensemble.num_claws):
+            other_claw = ensemble.claws[i]
+            if other_claw == entity: continue
+            percent_perturb_succ = np.mean(perturbations * (results_other[i] == 1))
+            print('Avg. rate of perturbed features for successful '
+                  'adversarial examples for other model ({0}): {1:.2f}'.format(other_claw.name, percent_perturb_succ*100))
+
+        percent_perturb_succ = np.mean(perturbations * (results_ensemble == 1))
+        print('Avg. rate of perturbed features for successful '
+              'adversarial examples for ensemble model: {0:.2f}'.format(percent_perturb_succ*100))
 
     # Finally, block & display a grid of all the adversarial examples
     plt.close(figure)
