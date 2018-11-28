@@ -127,7 +127,7 @@ def attackFGM(entity, dataset, plot_images=5, save_image_location='atkimageFGM',
         print('Adversarial accuracy (FGM) on ensemble model: {0:.2f}%'.format(adv_acc_e*100))
 
 
-def attackJSM(entity, dataset, source_samples=3, ensemble=None):
+def attackJSM(entity, dataset, source_samples=3, show_plots=True, ensemble=None):
     num_classes = dataset.num_classes
 
     image_filter = entity.datagen.preprocessing_function
@@ -147,8 +147,9 @@ def attackJSM(entity, dataset, source_samples=3, ensemble=None):
     perturbations = np.zeros((num_classes, source_samples), dtype='f')
 
     # Initialize our array for grid visualization
-    grid_shape = (num_classes, num_classes) + dataset.input_shape
-    grid_viz_data = np.zeros(grid_shape, dtype='f')
+    if show_plots:
+        grid_shape = (num_classes, num_classes) + dataset.input_shape
+        grid_viz_data = np.zeros(grid_shape, dtype='f')
 
     # Instantiate a SaliencyMapMethod attack object
     jsma = SaliencyMapMethod(KerasModelWrapper(entity.model), keras.backend.get_session())
@@ -179,12 +180,12 @@ def attackJSM(entity, dataset, source_samples=3, ensemble=None):
         print('--------------------------------------')
         print('Attacking input %i/%i' % (attack_num + 1, source_samples))
         samples = test_images[sample_ind:(sample_ind + 1)]
-        filtered_test_image = image_filter(np.squeeze(samples)).reshape(dataset.input_shape)
-
         target_classes = cleverhans.utils.other_classes(num_classes, current_class)
 
-        # For the grid visualization, keep original images along the diagonal
-        grid_viz_data[current_class, current_class, :, :, :] = filtered_test_image
+        if show_plots:
+            filtered_test_image = image_filter(np.squeeze(samples)).reshape(dataset.input_shape)
+            # For the grid visualization, keep original images along the diagonal
+            grid_viz_data[current_class, current_class, :, :, :] = filtered_test_image
 
         # Loop over all target classes
         for target in target_classes:
@@ -195,7 +196,8 @@ def attackJSM(entity, dataset, source_samples=3, ensemble=None):
             one_hot_target[0, target] = 1
             jsma_params['y_target'] = one_hot_target
             adversarial_images = jsma.generate_np(samples, **jsma_params)
-            filtered_adversarial_image = image_filter(np.squeeze(adversarial_images)).reshape(dataset.input_shape)
+            if show_plots:
+                filtered_adversarial_image = image_filter(np.squeeze(adversarial_images)).reshape(dataset.input_shape)
 
             preds = entity.predict(adversarial_images)
             res = np.sum(np.argmax(preds, axis=1) == target)
@@ -221,12 +223,13 @@ def attackJSM(entity, dataset, source_samples=3, ensemble=None):
             number_changed = np.where(np.abs(adversarial_image_reshape - test_in_reshape) > 1e-6)[0].shape[0]
             percent_perturb = float(number_changed) / adversarial_images.reshape(-1).shape[0]
 
-            # Display the original and adversarial images side-by-side
-            # NOTE Don't forget to filter them!
-            figure = cleverhans.utils.pair_visual(filtered_test_image, filtered_adversarial_image, figure)
+            if show_plots:
+                # Display the original and adversarial images side-by-side
+                # NOTE Don't forget to filter them!
+                figure = cleverhans.utils.pair_visual(filtered_test_image, filtered_adversarial_image, figure)
 
-            # Add our adversarial example to our grid data
-            grid_viz_data[target, current_class, :, :, :] = filtered_adversarial_image
+                # Add our adversarial example to our grid data
+                grid_viz_data[target, current_class, :, :, :] = filtered_adversarial_image
 
             # Update the arrays for later analysis
             results[target, attack_num] = res
@@ -281,8 +284,9 @@ def attackJSM(entity, dataset, source_samples=3, ensemble=None):
               'adversarial examples for ensemble model: {0:.2f}'.format(percent_perturb_succ*100))
 
     # Finally, block & display a grid of all the adversarial examples
-    plt.close(figure)
-    cleverhans.utils.grid_visual(grid_viz_data)
+    if show_plots:
+        plt.close(figure)
+        cleverhans.utils.grid_visual(grid_viz_data)
 
 
 def back_to_black(model, dataset, batch_size=128, learning_rate=.001,
