@@ -80,7 +80,6 @@ def attackFGM(claw, dataset, plot_images=5, save_image_location='atkimageFGM', e
                 plt.show()
                 break
 
-
     # Run in batches, otherwise it uses too much memory!
     generator_batch_size=32
     adv_batch_size = generator_batch_size*10
@@ -136,7 +135,11 @@ def attackFGM(claw, dataset, plot_images=5, save_image_location='atkimageFGM', e
 
 
 # TODO update for claw/palm
-def attackJSM(model, datagen, source_samples=3, save_image_location='atkimageJSM'):
+def attackJSM(entity, dataset, source_samples=3, save_image_location='atkimageJSM'):
+	model = entity.model
+	datagen = entity.datagen
+
+	num_classes = datagen.num_classes
 
     image_filter = datagen.preprocessing_function
     model_name = get_model_name(image_filter)
