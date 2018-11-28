@@ -203,29 +203,28 @@ class Claw:
         if epochs < 1:
             epochs = self._epochs
 
+        num_train = int(len(x_train) * (1-self._datagen._validation_split))
+        num_validation = int(len(x_train) * self._datagen._validation_split)
+        batch_size_train = min(generator_batch_size, num_train)
+        batch_size_validation = min(generator_batch_size, num_validation)
+
         train_generator = self._datagen.flow(
             x_train,
             y_train,
             subset="training",
-            batch_size=generator_batch_size)
-
-        # Get the number of samples in the training subset
-        num_train = len(train_generator.x)
+            batch_size=batch_size_train)
 
         validation_generator = self._datagen.flow(
             x_train,
             y_train,
             subset="validation",
-            batch_size=generator_batch_size)
-
-        # Get the number of samples in the validation subset
-        num_validation = len(validation_generator.x)
+            batch_size=batch_size_validation)
 
         return self._model.fit_generator(
             train_generator,
-            steps_per_epoch=num_train/generator_batch_size,
+            steps_per_epoch=num_train/batch_size_train,
             validation_data=validation_generator,
-            validation_steps=num_validation/generator_batch_size,
+            validation_steps=num_validation/batch_size_validation,
             epochs=epochs,
             initial_epoch=initial_epoch,
             workers=generator_workers)
@@ -236,13 +235,17 @@ class Claw:
         if y_test is None:
             y_test = self._dataset.test_labels
 
-        evaluate_generator = self._datagen.flow(x_test, y_test, batch_size=generator_batch_size)
-        loss, acc = self._model.evaluate_generator(evaluate_generator, steps=len(x_test)/generator_batch_size)
+        num_images = len(x_test)
+        batch_size = min(generator_batch_size, num_images)
+        evaluate_generator = self._datagen.flow(x_test, y_test, batch_size=batch_size)
+        loss, acc = self._model.evaluate_generator(evaluate_generator, steps=num_images/batch_size)
         return acc
 
     def predict(self, x):
-        predict_generator = self._datagen.flow(x, batch_size=generator_batch_size, shuffle=False)
-        return self._model.predict_generator(predict_generator, steps=len(x)/generator_batch_size)
+        num_images = len(x)
+        batch_size = min(generator_batch_size, num_images)
+        predict_generator = self._datagen.flow(x, batch_size=batch_size, shuffle=False)
+        return self._model.predict_generator(predict_generator, steps=num_images/batch_size)
 
 
 class Palm:
@@ -390,29 +393,29 @@ class Palm:
         latest_history = None
         for current_epoch in range(initial_epoch, epochs):
             for datagen in self._datagens:
+
+                num_train = int(len(x_train) * (1-datagen._validation_split))
+                num_validation = int(len(x_train) * datagen._validation_split)
+                batch_size_train = min(generator_batch_size, num_train)
+                batch_size_validation = min(generator_batch_size, num_validation)
+
                 train_generator = datagen.flow(
                     x_train,
                     y_train,
                     subset="training",
-                    batch_size=generator_batch_size)
-
-                # Get the number of samples in the training subset
-                num_train = len(train_generator.x)
+                    batch_size=batch_size_train)
 
                 validation_generator = datagen.flow(
                     x_train,
                     y_train,
                     subset="validation",
-                    batch_size=generator_batch_size)
-
-                # Get the number of samples in the validation subset
-                num_validation = len(validation_generator.x)
+                    batch_size=batch_size_validation)
 
                 latest_history = self._model.fit_generator(
                     train_generator,
-                    steps_per_epoch=num_train/generator_batch_size,
+                    steps_per_epoch=num_train/batch_size_train,
                     validation_data=validation_generator,
-                    validation_steps=num_validation/generator_batch_size,
+                    validation_steps=num_validation/batch_size_validation,
                     epochs=current_epoch+1,
                     initial_epoch=current_epoch,
                     workers=generator_workers)
@@ -437,8 +440,16 @@ class Palm:
     def predict(self, x):
         # TODO need a merging method...can probably train on that too, like an ensemble.
         # For now just use average, or majority vote.
-        predict_generator = self._datagens[0].flow(x, batch_size=generator_batch_size, shuffle=False)
-        return self._model.predict_generator(predict_generator, steps=len(x)/generator_batch_size)
+        num_images = len(x)
+        batch_size = min(generator_batch_size, num_images)
+        predictions = []
+        for datagen in self._datagens:
+            predict_generator = datagen.flow(x, batch_size=batch_size, shuffle=False)
+            predictions.append(self._model.predict_generator(predict_generator, steps=num_images/batch_size))
+        avg = np.zeros_like(predictions[0])
+        for p in predictions:
+            avg += p
+        return avg / len(predictions)
 
 
 class Fist:
