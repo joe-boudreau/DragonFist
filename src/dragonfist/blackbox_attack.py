@@ -1,19 +1,21 @@
 import keras
+from skimage import filters
 
+import transformations
+import transformations as tr
 from attacks import back_to_black
 from data import DataSet
 from ensembles.stacking import Stacking
 from model import Claw
 from processing import ImageProcessParams
-from skimage import filters
-import transformations as tr
 
 
 def main():
+    # dataset = DataSet.load_from_keras(keras.datasets.cifar10, dtype='float32')
     dataset = DataSet.load_from_keras(keras.datasets.fashion_mnist, dtype='float32')
 
     # claw = Claw(dataset, auto_train=True, plot_images=0, epochs=3)
-    # claw = Claw(dataset, ImageProcessParams(filters.gaussian, {'sigma': 1.5}), auto_train=True, epochs=3)
+    # # claw = Claw(dataset, ImageProcessParams(filters.gaussian, {'sigma': 1.5}), auto_train=True, epochs=3)
     # results = back_to_black(claw, dataset)
 
     ensemble = build_ensemble(dataset)
@@ -27,13 +29,16 @@ def main():
 
 def build_ensemble(dataset):
 
-    claw1 = Claw(dataset, auto_train=True, retrain=False, epochs=3)
+    claw1 = Claw(dataset, auto_train=True, epochs=3)
+    # claw2 = Claw(dataset, ImageProcessParams(filters.gaussian, {'sigma': 1.5}), auto_train=True, epochs=3)
+    # claw3 = Claw(dataset, ImageProcessParams(filters.sobel, {}, each_channel, {'zca_whitening': True}), auto_train=True, epochs=3)
+    claw2 = Claw(dataset, ImageProcessParams(filters.sobel, {}, tr.compat2d, {'zca_whitening':True}), auto_train=True, epochs=3)
+    claw3 = Claw(dataset, ImageProcessParams(transformations.min), auto_train=True, epochs=3)
+    claw4 = Claw(dataset, ImageProcessParams(transformations.max, preprocess_params={'zca_whitening': True}), auto_train=True, epochs=3)
+    claw5 = Claw(dataset, ImageProcessParams(transformations.rank), auto_train=True, epochs=3)
+    claw6 = Claw(dataset, ImageProcessParams(transformations.median), auto_train=True, epochs=3)
 
-    claw2 = Claw(dataset, ImageProcessParams(filters.gaussian, {'sigma': 1.5}), auto_train=True, epochs=3)
-
-    claw3 = Claw(dataset, ImageProcessParams(filters.sobel, {}, tr.compat2d, {'zca_whitening': True}), auto_train=True, epochs=3)
-
-    ensemble = Stacking(claw1, claw2, claw3)
+    ensemble = Stacking(claw1, claw2, claw3, claw4, claw5, claw6)
 
     x = dataset.train_images
     y = dataset.train_labels
