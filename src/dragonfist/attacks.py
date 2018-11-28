@@ -23,7 +23,6 @@ from cleverhans.utils import to_categorical
 from cleverhans.utils_keras import KerasModelWrapper
 from cleverhans.utils_tf import model_eval
 from cleverhans_tutorials.tutorial_models import ModelBasicCNN
-from dataset import MNIST
 from keras.preprocessing.image import ImageDataGenerator
 from matplotlib import cm
 from matplotlib import pyplot as plt
