@@ -32,43 +32,34 @@ from tensorflow.python.platform import flags
 from image_utils import *
 
 
-# NOTE claw can also be a palm, with the magic of duck typing. Should still clean this up
-def attackFGM(claw, dataset, plot_images=5, save_image_location='atkimageFGM', ensemble=None):
-    """Attack a single (non-ensemble) model."""
-
-    model = claw.model
-    datagen = claw.datagen
-
-    fgsm = FastGradientMethod(KerasModelWrapper(claw.model), keras.backend.get_session())
+def attackFGM(entity, dataset, plot_images=5, save_image_location='atkimageFGM', ensemble=None):
+    fgsm = FastGradientMethod(KerasModelWrapper(entity.model), keras.backend.get_session())
     fgsm_params = {'eps': 0.3,
                    'clip_min': 0.,
                    'clip_max': 1.}
 
-
-    image_filter = datagen.preprocessing_function
-
     # TODO slicing
-    images = dataset.test_images
-    labels = dataset.test_labels
+    test_images = dataset.test_images
+    test_labels = dataset.test_labels
 
     if plot_images > 0:
-        save_image_location = create_image_folder(save_image_location, claw.name)
+        save_image_location = create_image_folder(save_image_location, entity.name)
 
         # NOTE: Use a different generator here to show only the effects of the filter,
         #       and not of any other preprocessing step.
-        filtergen = ImageDataGenerator(preprocessing_function=image_filter)
-        adversarial_images = fgsm.generate_np(images[0:plot_images], **fgsm_params)
+        filtergen = ImageDataGenerator(preprocessing_function=entity.datagen.preprocessing_function)
+        adversarial_images = fgsm.generate_np(test_images[0:plot_images], **fgsm_params)
         image_generator = filtergen.flow(adversarial_images,
                                          batch_size=1, shuffle=False, save_to_dir=save_image_location)
 
         # If plotting 2d images, use a grayscale color map
-        cmap = get_cmap_for_images(images)
+        cmap = get_cmap_for_images(test_images)
 
         i = 0
         fig, axs = plt.subplots(2, plot_images)
         for batch_images in image_generator:
             ax = axs[0,i]
-            ax.imshow(ensure_is_plottable(images[i]), cmap=cmap)
+            ax.imshow(ensure_is_plottable(test_images[i]), cmap=cmap)
             ax.set_axis_off()
             ax = axs[1,i]
             ax.imshow(ensure_is_plottable(batch_images[0]), cmap=cmap)
@@ -79,11 +70,10 @@ def attackFGM(claw, dataset, plot_images=5, save_image_location='atkimageFGM', e
                 plt.show()
                 break
 
-
     # Run in batches, otherwise it uses too much memory!
     generator_batch_size=32
     adv_batch_size = generator_batch_size*10
-    num_images = len(images)
+    num_images = len(test_images)
     num_correct = 0
     img_start = 0
 
@@ -95,25 +85,25 @@ def attackFGM(claw, dataset, plot_images=5, save_image_location='atkimageFGM', e
 
     while True:
         img_end = min(img_start+adv_batch_size, num_images)
-        adversarial_images = fgsm.generate_np(images[img_start:img_end], **fgsm_params)
+        adversarial_images = fgsm.generate_np(test_images[img_start:img_end], **fgsm_params)
 
         num_correct += np.sum(
-                        np.argmax(claw.predict(adversarial_images), axis=1) ==
-                        np.argmax(labels[img_start:img_end], axis=1))
+                        np.argmax(entity.predict(adversarial_images), axis=1) ==
+                        np.argmax(test_labels[img_start:img_end], axis=1))
 
         if ensemble != None:
             # Are adv. examples transferable to other models?
             for i in range(ensemble.num_claws):
                 other_claw = ensemble.claws[i]
-                if other_claw == claw: continue
+                if other_claw == entity: continue
                 num_correct_other[i] += np.sum(
                                 np.argmax(other_claw.predict(adversarial_images), axis=1) ==
-                                np.argmax(labels[img_start:img_end], axis=1))
+                                np.argmax(test_labels[img_start:img_end], axis=1))
 
             # Are adv. examples transferable to the ensemble model?
             num_correct_ensemble += np.sum(
                         np.argmax(ensemble.predict(adversarial_images), axis=1) ==
-                        np.argmax(labels[img_start:img_end], axis=1))
+                        np.argmax(test_labels[img_start:img_end], axis=1))
 
         if img_end == num_images:
             break
@@ -121,12 +111,12 @@ def attackFGM(claw, dataset, plot_images=5, save_image_location='atkimageFGM', e
             img_start+=adv_batch_size
 
     adv_acc = num_correct/num_images
-    print('Adversarial accuracy (FGM) on main  model ({0}): {1:.2f}%'.format(claw.name, adv_acc*100))
+    print('Adversarial accuracy (FGM) on main  model ({0}): {1:.2f}%'.format(entity.name, adv_acc*100))
 
     if ensemble != None:
         for i in range(ensemble.num_claws):
             other_claw = ensemble.claws[i]
-            if other_claw == claw: continue
+            if other_claw == entity: continue
             adv_acc_other = num_correct_other[i]/num_images
             print('Adversarial accuracy (FGM) on other model ({0}): {1:.2f}%'.format(other_claw.name, adv_acc_other*100))
 
@@ -134,12 +124,10 @@ def attackFGM(claw, dataset, plot_images=5, save_image_location='atkimageFGM', e
         print('Ensemble adversarial accuracy (FGM): {0:.2f}%'.format(adv_acc_e*100))
 
 
-# TODO update for claw/palm
-def attackJSM(model, datagen, source_samples=3, save_image_location='atkimageJSM'):
+def attackJSM(entity, dataset, source_samples=3):
+    num_classes = dataset.num_classes
 
-    image_filter = datagen.preprocessing_function
-    model_name = get_model_name(image_filter)
-    save_image_location = create_image_folder(save_image_location, model_name)
+    image_filter = entity.datagen.preprocessing_function
 
     print('Crafting ' + str(source_samples) + ' * ' + str(num_classes - 1) +
           ' adversarial examples')
@@ -151,20 +139,23 @@ def attackJSM(model, datagen, source_samples=3, save_image_location='atkimageJSM
     perturbations = np.zeros((num_classes, source_samples), dtype='f')
 
     # Initialize our array for grid visualization
-    grid_shape = (num_classes, num_classes) + input_shape
+    grid_shape = (num_classes, num_classes) + dataset.input_shape
     grid_viz_data = np.zeros(grid_shape, dtype='f')
 
     # Instantiate a SaliencyMapMethod attack object
-    jsma = SaliencyMapMethod(KerasModelWrapper(model), keras.backend.get_session())
+    jsma = SaliencyMapMethod(KerasModelWrapper(entity.model), keras.backend.get_session())
     jsma_params = {'theta': 1., 'gamma': 0.1,
                    'clip_min': 0., 'clip_max': 1.,
                    'y_target': None}
+
+    test_images = dataset.test_images
+    test_labels = dataset.test_labels
 
     figure = None
     # Loop over the samples we want to perturb into adversarial examples
     # NOTE This is just one image at a time, but dimensionalities allow
     #      for multiple images at a time.
-    # TODO Should have a version of this that generates multiple attack images at once.
+    # TODO Should have a version of this that generates multiple attack images at once. Or maybe not.
     encountered_classes = []
     attack_num = 0
     sample_ind = -1
@@ -179,8 +170,8 @@ def attackJSM(model, datagen, source_samples=3, save_image_location='atkimageJSM
 
         print('--------------------------------------')
         print('Attacking input %i/%i' % (attack_num + 1, source_samples))
-        samples = images[sample_ind:(sample_ind + 1)]
-        filtered_test_image = image_filter(np.squeeze(samples))
+        samples = test_images[sample_ind:(sample_ind + 1)]
+        filtered_test_image = image_filter(np.squeeze(samples)).reshape(dataset.input_shape)
 
         target_classes = cleverhans.utils.other_classes(num_classes, current_class)
 
@@ -196,19 +187,16 @@ def attackJSM(model, datagen, source_samples=3, save_image_location='atkimageJSM
             one_hot_target[0, target] = 1
             jsma_params['y_target'] = one_hot_target
             adversarial_images = jsma.generate_np(samples, **jsma_params)
-            filtered_adversarial_image = image_filter(np.squeeze(adversarial_images))
+            filtered_adversarial_image = image_filter(np.squeeze(adversarial_images)).reshape(dataset.input_shape)
 
-            # NOTE batch_size=1 and steps=1 is only for one-at-a-time attacks
-            preds = model.predict_generator(
-                        datagen.flow(adversarial_images, batch_size=1, save_to_dir=save_image_location),
-                        steps=1)
+            preds = entity.predict(adversarial_images)
 
             # Check if success was achieved
             res = np.sum(np.argmax(preds, axis=1) == target)
 
             # Compute number of modified features
             adversarial_image_reshape = adversarial_images.reshape(-1)
-            test_in_reshape = images[sample_ind].reshape(-1)
+            test_in_reshape = test_images[sample_ind].reshape(-1)
             # NOTE Don't count extremely small perturbations, otherwise %changed can be nearly 100
             number_changed = np.where(np.abs(adversarial_image_reshape - test_in_reshape) > 1e-6)[0].shape[0]
             percent_perturb = float(number_changed) / adversarial_images.reshape(-1).shape[0]
@@ -231,16 +219,16 @@ def attackJSM(model, datagen, source_samples=3, save_image_location='atkimageJSM
     # Compute the number of adversarial examples that were successfully found
     num_targets_tried = ((num_classes - 1) * source_samples)
     succ_rate = float(np.sum(results)) / num_targets_tried
-    print('Avg. rate of successful adv. examples {0:.4f}'.format(succ_rate))
+    print('Avg. rate of successful adv. examples {0:.2f}'.format(succ_rate*100))
 
     # Compute the average distortion introduced by the algorithm
     percent_perturbed = np.mean(perturbations)
-    print('Avg. rate of perturbed features {0:.4f}'.format(percent_perturbed))
+    print('Avg. rate of perturbed features {0:.2f}'.format(percent_perturbed*100))
 
     # Compute the average distortion introduced for successful samples only
     percent_perturb_succ = np.mean(perturbations * (results == 1))
     print('Avg. rate of perturbed features for successful '
-          'adversarial examples {0:.4f}'.format(percent_perturb_succ))
+          'adversarial examples {0:.2f}'.format(percent_perturb_succ*100))
 
     # Finally, block & display a grid of all the adversarial examples
     plt.close(figure)
