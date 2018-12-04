@@ -2,6 +2,15 @@
 
 \usepackage[numbers]{natbib}
 \usepackage{multicol}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{xparse}
+
+\NewDocumentCommand{\codeword}{v}{
+	\texttt{\textcolor{blue}{#1}}
+}
+
+\renewcommand*{\bibfont}{\raggedright}
 
 \setlength{\multicolsep}{6.0pt plus 2.0pt minus 1.5pt}
 
@@ -18,6 +27,7 @@
 	\end{abstract}
 
 	\input{sections/introduction.tex}
+	\input{sections/filters.tex}
 	%\input{sections/appendix.tex}
 
 	% ----- REFERENCES -----
