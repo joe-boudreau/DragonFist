@@ -1,1 +1,14 @@
 \section{Future Research} \label{s:futureresearch}
+Based off the empirical results observed thus far it is clear that image transformations yields beneficial properties for image classification models in both adversarial resilience and model accuracy.
+The models and filters implemented as part of these experiments achieved some level of success, but it is likely that further optimizations could be achieved still.
+In particular, looking at different underlying model structures would be interesting.
+In particular, researching the effects of adding Dropout and other regularization features to the models which would promote better generalization, a key feature for improving adversarial robustness.
+Also, it seems likely that different filtered versions of images would require different model structures to fully optimize each individual model's accuracy.
+
+In regards to filters specifically, much more investigation is needed to fully explore the space of filters and which ones are the most conducive to machine learning.
+An interesting project would be to build a full filter testing framework to facilitate rigorous searching for effective filters and filter combinations, possibly boosted by an adaptive learning algorithm as well to reduce the search scope.
+
+For the ensembling stage (FIST), research indicates that their are more effective ensembling methods, such as bagging and boosting, which introduce variability into the training sets for each individual model and promote a less consistent response across the collection of models.
+Intuitively, this should be beneficial for adversarial resilience because not every model would not be susceptible to any particular adversarial image, due to their response diversity.
+
+Finally, investigation into how well the DRAGONFIST design performs on higher resolution image sets would be a logical next step for this research as effectiveness at that level of complexity would be a more practical result, with implications for real-world ML applications.
