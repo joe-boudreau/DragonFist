@@ -1,2 +1,20 @@
 \section{Introduction} \label{s:introduction}
-	Introduction goes here...
+In this paper we will describe and provide quantitative results for two model structures, each utilizing image filters in some way to create a more robust neural network.
+The first structure is an ensemble model composed of several individually trained CNNs, each with a different image filter applied prior to classifying.
+The outputs of every model are combined using a fitted logistic regression function.
+The second design is a single CNN trained on a data set which has been augmented sets of filtered versions of each image in the original training data set.
+During inference, the model will classify each filtered version of the image sequentially (having learned to classify different filtered versions of the images during training) and then similarly combine each prediction vector using logistic regression.
+In both designs, we experiment with different combinations of filters in order to determine which are effective.
+Our findings indicate a marginal increase in both accuracy (3-5\%) and a significant improvement in adversarial robustness (30-40\%) for the ensemble model against black-box attacks.
+The second model design achieved less favorable results, exhibiting only marginal increases in performance and accuracy.
+With regards to transformations, we investigate a multitude of existing filters, both linear and non-linear, in addition to implementing some custom filters and looking at their effectiveness.
+Previous research indicates that median filters are effective at removing adversarial noise\cite{osadchy2016} - we found this to be the case in our experiments as well.
+The most effective combination of filters to ensemble was Identity, Edge Detection, Min, Max, Rank, Median, and Gaussian.
+In general, most filtered models exhibited small accuracy reductions compared to the same model trained with no filter.
+The only filter which could achieve the same classification accuracy as an unfiltered model was a Sobel (edge detection) filter.
+Extremely lossy filters performed, as expected, much worse on classification.
+In general, we want to leverage the trade-off between distortion and accuracy in the ensemble to maximize resilience to adversarial perturbations.
+
+For the purposes of convenience, as well as to limit the scope of variability in our research, every model in the ensemble shares the same underlying layer structure.
+The models are implemented using the Keras Sequential interface and are composed of several 2D convolutional layers, a 2x2 max pooling layer, a final densely connected convolutional layer followd by an output Softmax activation function.
+Unfortunately, due to a incompatibility between TensorFlow and the Cleverhans library, dropout regularization could not be utilized.
