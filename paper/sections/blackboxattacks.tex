@@ -1,5 +1,5 @@
 \section{Black Box Attacks} \label{s:blackboxattacks}
-Blackbox attacks were implemented using a modified version of the attack provided by the Cleverhans library\cite{papernot2018cleverhans}.
+Black-box attacks were implemented using a modified version of the attack provided by the Cleverhans library\cite{papernot2018cleverhans}.
 The attack threat model assumes unlimited oracle ability on the target model, but no knowledge of the internal weights or biases of the model itself.
 This threat model is arguably a more realistic and important scenario, compared to a model which assumes knowledge of the interior model.
 This is because a model's structure should never be externally exposed and defense against these attacks can be mitigated by traditional security controls to prevent data theft and unwanted network access.
@@ -8,9 +8,82 @@ Therefore, finding effective strategies for minimizing the effectiveness of blac
 
 The attack works by training a substitute CNN using the output labels of the target model in conjunction with the images given to the model to be classified.
 This substitute model is a two layer CNN with ReLu activation functions and a Softmax normalization final layer.
-This substitute model is then used to generate adversarial examples using the Fast Gradient Sign Method developed by GoodFellow et.
-al.
+This substitute model is then used to generate adversarial examples using the Fast Gradient Sign Method developed by GoodFellow et al.
 These adversarial examples are then tested against the original target model with the intention of misclassifying the input.
 This attack utilizes the transferability characteristic of adversarial examples - an adversarial image generated using one model will generally have a high probability of being misclassified by other models which perform the same classification task but may have been trained differently and use different internal structures.
 
 We tested the effectiveness of both PALM and FIST model designs in increasing the classification accuracy of these transferred adversarial images, relative to a single "standard" model, as defined above.
+The results of the black-box attack against the standard model for both the MNIST and CIFAR-10 datasets averaged over epochs ranging from 1 to 9 is given in table \ref{t:standardBlackBoxAcc} below.
+\begin{table}
+    \begin{center}
+        \caption{Standard CNN Black-Box Accuracy}
+        \label{t:standardBlackBoxAcc}
+        \begin{tabular}{l|l|l}\hline
+        \textbf{Dataset} & \textbf{Test Accuracy} & \textbf{Adversarial Accuracy}\\\hline
+        MNIST & 90\% & 27\% \\\hline
+        CIFAR-10 & 71\% & 24\% \\\hline
+        \end{tabular}
+    \end{center}
+\end{table}
+
+For the PALM, there was not a significant increase in classification accuracy on black-box adversarial examples.
+The maximum adversarial accuracy achieved over a number of different trials with varying filter combinations was 14\% with a test accuracy of 87\% for the MNIST dataset, which represents a decrease compared to the average numbers for the standard model as seen in table \ref{t:standardBlackBoxAcc} above.
+
+For the FIST, there were two ensembling implementations tested.
+The first is a Logistic Regression function which was fitted to the output prediction vectors of each individual model in the ensemble.
+The second was a simple averaging method of these prediction vectors.
+The results of both ensembles over a range of training epochs and number of filters are shown in tables \ref{t:logisticRegressionBlackBoxAcc} and \ref{t:basicAveragingBlackBoxAcc}
+
+\begin{table}
+    \begin{center}
+        \caption{Logistic Regression Ensemble Black-Box Accuracy}
+        \label{t:logisticRegressionBlackBoxAcc}
+        \begin{tabular}{l|l|l}\hline
+        \textbf{\# Filters/Epochs} & \textbf{Test Accuracy} & \textbf{Adversarial Accuracy}\\\hline
+        3/10 & 91\% & 33\% \\\hline
+        6/3 & 89\% & 45\% \\\hline
+        6/4 & 90\% & 39\% \\\hline
+        6/5 & 89\% & 31\% \\\hline
+        7/3 & 90\% & 48\% \\\hline
+        8/3 & 87\% & 41\% \\\hline
+        \end{tabular}
+    \end{center}
+\end{table}
+
+\begin{table}
+    \begin{center}
+        \caption{Basic Averaging Ensemble Black-Box Accuracy}
+        \label{t:basicAveragingBlackBoxAcc}
+        \begin{tabular}{l|l|l}\hline
+        \textbf{\# Filters/Epochs} & \textbf{Test Accuracy} & \textbf{Adversarial Accuracy}\\\hline
+        4/4 & 91\% & 33\% \\\hline
+        5/4 & 89\% & 49\% \\\hline
+        5/5 & 91\% & 59\% \\\hline
+        5/6 & 91\% & 53\% \\\hline
+        5/7 & 91\% & 55\% \\\hline
+        5/8 & 91\% & 41\% \\\hline
+        6/5 & 90\% & 45\% \\\hline
+        7/4 & 89\% & 50\% \\\hline
+        7/5 & 91\% & 55\% \\\hline
+        7/6 & 91\% & 51\% \\\hline
+        7/7 & 89\% & 50\% \\\hline
+        7/8 & 92\% & 43\% \\\hline
+        \end{tabular}
+    \end{center}
+\end{table}
+
+As can be seen in tables \ref{t:logisticRegressionBlackBoxAcc} and \ref{t:basicAveragingBlackBoxAcc}, there was a significant improvement in both the test set accuracy as well as the adversarial accuracy when using the FIST ensembling model.
+It is interesting to note that the basic averaging method outperformed the logistic regression function, although this may indicate that adversarial robustness is enhanced by accepting diversity and variance in the output response.
+By weighting the individual CLAWS which do not classify as strongly as those which do, the FIST becomes more resilient to images which are outside the normal distribution and can handle these perturbed images better.
+Out of all the FISTs tested, the best performing model was a basic averaging ensemble composed of 5 individual CLAWs trained for 5 epochs on images filtered by the following transformations:
+
+\begin{itemize}
+    \item Identity (No filter)
+    \item Edge Detection w/ ZCA Whitening
+    \item Rank
+    \item Maximum
+    \item Minimum
+\end{itemize}
+
+This FIST was able to increase the test accuracy from 90\% to 91\%, while also doubling the adversarial accuracy from 27\% to 59\%.
+This is a noteworthy increase in model resilience against black-box attacks, especially since it required no additional training data or more complex model structure - simply an amalgamation of several models trained on images transformed using various filters.
