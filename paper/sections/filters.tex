@@ -19,12 +19,7 @@
 		In order to understand what the filters are doing to the images, a brief explanation of each is given.
 
 		\subsubsection{Edge detection} \label{s:filters:descriptions:edgeDetection}
-			The edge detection filter uses the Python library \codeword{skimage.filters.sobel} \cite{skikitImageFiltersSobel}. This filter locates and isolates the edges of objects found in an image. An example of this filter applied to an image in the MNIST Fashion database \cite{zalandoresearchFashionMNIST} can be seen in Figure \ref{f:filters:edgeDetection}.
-			\begin{figure}
-				\includegraphics[width=\linewidth]{edge-detection}
-				\caption{Edge detection filter on MNIST Fashion image.}
-				\label{f:filters:edgeDetection}
-			\end{figure}
+			The edge detection filter uses the Python library \codeword{skimage.filters.sobel} \cite{skikitImage}. This filter locates and isolates the edges of objects found in an image. An example of this filter applied to an image in the MNIST Fashion database \cite{zalandoresearchFashionMNIST} can be seen in Appendix \ref{a:filters} Figure \ref{a:filters:edgeDetection}.
 
 	\subsection{Filter accuracy} \label{s:filters:accuracy}
 		When applying each filter to the system, it is important to remember the overall goal of the model -- to accurately classify its input. Therefore, each filter's accuracy in classification is important to consider to ensure the overall model maintains a high accuracy as well. Each filter was tested individually in order to determine its classification accuracy. The results of these tests can be observed in table \ref{t:filterAccuracies}.

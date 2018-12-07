@@ -6,6 +6,7 @@
 \usepackage{listings}
 \usepackage{xparse}
 \usepackage{graphicx}
+\usepackage{caption}
 
 \graphicspath{{figures/}}
 
@@ -34,6 +35,7 @@
 	\end{abstract}
 
 	\input{sections/introduction.tex}
+	\input{sections/motivation-and-background.tex}
 	\input{sections/terminology.tex}
     \input{sections/filters.tex}
 	\input{sections/whiteboxattacks.tex}
@@ -41,10 +43,11 @@
 	\input{sections/futureresearch.tex}
 	\input{sections/conclusion.tex}
 
-	%\input{sections/appendix.tex}
-
 	% ----- REFERENCES -----
 	\bibliographystyle{IEEEtranN}
 	\bibliography{references}{}
+
+	\pagebreak
+	\input{sections/appendix.tex}
 
 \end{document}
