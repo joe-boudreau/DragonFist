@@ -13,7 +13,7 @@ These adversarial examples are then tested against the original target model wit
 This attack utilizes the transferability characteristic of adversarial examples - an adversarial image generated using one model will generally have a high probability of being misclassified by other models which perform the same classification task but may have been trained differently and use different internal structures.
 
 We tested the effectiveness of both PALM and FIST model designs in increasing the classification accuracy of these transferred adversarial images, relative to a single "standard" model, as defined above.
-The results of the black-box attack against the standard model for both the MNIST and CIFAR-10 datasets averaged over epochs ranging from 1 to 9 is given in table \ref{t:standardBlackBoxAcc} below.
+The results of the black-box attack against the standard model for both the MNIST and CIFAR-10 datasets averaged over epochs ranging from 1 to 9 is given in Table \ref{t:standardBlackBoxAcc}.
 \begin{table}
     \begin{center}
         \caption{Standard CNN Black-Box Accuracy}
@@ -27,12 +27,12 @@ The results of the black-box attack against the standard model for both the MNIS
 \end{table}
 
 For the PALM, there was not a significant increase in classification accuracy on black-box adversarial examples.
-The maximum adversarial accuracy achieved over a number of different trials with varying filter combinations was 14\% with a test accuracy of 87\% for the MNIST dataset, which represents a decrease compared to the average numbers for the standard model as seen in table \ref{t:standardBlackBoxAcc} above.
+The maximum adversarial accuracy achieved over a number of different trials with varying filter combinations was 14\% with a test accuracy of 87\% for the MNIST dataset, which represents a decrease compared to the average numbers for the standard model as seen in Table \ref{t:standardBlackBoxAcc}.
 
 For the FIST, there were two ensembling implementations tested.
 The first is a Logistic Regression function which was fitted to the output prediction vectors of each individual model in the ensemble.
 The second was a simple averaging method of these prediction vectors.
-The results of both ensembles over a range of training epochs and number of filters are shown in tables \ref{t:logisticRegressionBlackBoxAcc} and \ref{t:basicAveragingBlackBoxAcc}
+The results of both ensembles over a range of training epochs and number of filters are shown in Tables \ref{t:logisticRegressionBlackBoxAcc} and \ref{t:basicAveragingBlackBoxAcc}.
 
 \begin{table}
     \begin{center}
@@ -72,7 +72,7 @@ The results of both ensembles over a range of training epochs and number of filt
     \end{center}
 \end{table}
 
-As can be seen in tables \ref{t:logisticRegressionBlackBoxAcc} and \ref{t:basicAveragingBlackBoxAcc}, there was a significant improvement in both the test set accuracy as well as the adversarial accuracy when using the FIST ensembling model.
+As can be seen in Tables \ref{t:logisticRegressionBlackBoxAcc} and \ref{t:basicAveragingBlackBoxAcc}, there was a significant improvement in both the test set accuracy as well as the adversarial accuracy when using the FIST ensembling model.
 It is interesting to note that the basic averaging method outperformed the logistic regression function, although this may indicate that adversarial robustness is enhanced by accepting diversity and variance in the output response.
 By weighting the individual CLAWS which do not classify as strongly as those which do, the FIST becomes more resilient to images which are outside the normal distribution and can handle these perturbed images better.
 Out of all the FISTs tested, the best performing model was a basic averaging ensemble composed of 5 individual CLAWs trained for 5 epochs on images filtered by the following transformations:

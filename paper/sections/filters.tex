@@ -1,5 +1,5 @@
 \section{Image Filters} \label{s:filters}
-	The proper selection of filters is important to the overall effectiveness of the algorithm. As previously mentioned, the intention of DRAGONFIST is to improve a machine learning model's resiliency against adversarial noise. Based on the work done by ------, adversaries can target specific pixels in an image to which noise will be applied. As such, filters which combine the values of pixels with their neighbours are intuitively more desirable as they increase the difficulty of targeting specific areas of the image to which noise will be applied. Therefore, the following filters were considering when designing DRAGONFIST:
+	The proper selection of filters is important to the overall effectiveness of the algorithm. As previously mentioned, the intention of DRAGONFIST is to improve a machine learning model's resiliency against adversarial noise. Based on the work done by \citeauthor{goodfellow2015} \cite{goodfellow2015}, adversaries can target specific pixels in an image to which noise will be applied. As such, filters which combine the values of pixels with their neighbours are intuitively more desirable as they increase the difficulty of targeting specific areas of the image to which noise will be applied. Therefore, the following filters were considering when designing DRAGONFIST:
 	\begin{multicols}{2}
 		\begin{itemize}
 			\item Edge detection
@@ -66,3 +66,6 @@
 			\caption{Classification accuracy during training for various image filters.}
 			\label{f:filters:accuracies}
 		\end{figure*}
+
+	\subsection{Filter selection} \label{s:filters:selection}
+		As previously mentioned, filters were selected for use in the DRAGONFIST model based on their intuitive ability to combine data from neighbouring pixels in order to increase the difficulty of targetting specific pixels with adversarial noise. Due to time constraints, a more systematic approach to filter selection could not be created. As such, we leave this to potential future research. Tools which test a filter's ability to defend against adversarial noise could help identify filters which would improve DRAGONFIST's ability to mitigate attack would be extremely useful for this project.
