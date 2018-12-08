@@ -3,16 +3,16 @@ Black-box attacks were implemented using a modified version of the attack provid
 The attack threat model assumes unlimited oracle ability on the target model, but no knowledge of the internal weights or biases of the model itself.
 This threat model is arguably a more realistic and important scenario, compared to a model which assumes knowledge of the interior model.
 This is because a model's structure should never be externally exposed and defense against these attacks can be mitigated by traditional security controls to prevent data theft and unwanted network access.
-On the other hand, it is entirely valid for a model to expose query access publicly, either as part of an API or a GUI. Although true "oracle" access can be prevented with query limitations imposed on the user, there is still risk of gaining enough information from rate-limited access or of the controls being circumvented somehow.
+On the other hand, it is entirely valid for a model to expose query access publicly, either as part of an API or a GUI. Although true ``oracle'' access can be prevented with query limitations imposed on the user, there is still risk of gaining enough information from rate-limited access or of the controls being circumvented somehow.
 Therefore, finding effective strategies for minimizing the effectiveness of black-box attacks are an important field of research in machine learning security.
 
 The attack works by training a substitute CNN using the output labels of the target model in conjunction with the images given to the model to be classified.
 This substitute model is a two layer CNN with ReLu activation functions and a Softmax normalization final layer.
 This substitute model is then used to generate adversarial examples using the Fast Gradient Sign Method developed by \citeauthor{goodfellow2015} \cite{goodfellow2015}.
 These adversarial examples are then tested against the original target model with the intention of misclassifying the input.
-This attack utilizes the transferability characteristic of adversarial examples - an adversarial image generated using one model will generally have a high probability of being misclassified by other models which perform the same classification task but may have been trained differently and use different internal structures.
+This attack utilizes the transferability characteristic of adversarial examples -- an adversarial image generated using one model will generally have a high probability of being misclassified by other models which perform the same classification task but may have been trained differently and use different internal structures.
 
-We tested the effectiveness of both PALM and FIST model designs in increasing the classification accuracy of these transferred adversarial images, relative to a single "standard" model, as defined above.
+We tested the effectiveness of both PALM and FIST model designs in increasing the classification accuracy of these transferred adversarial images, relative to a single ``standard'' model, as defined above.
 The results of the black-box attack against the standard model for both the MNIST and CIFAR-10 datasets averaged over epochs ranging from 1 to 9 is given in Table \ref{t:standardBlackBoxAcc}.
 \begin{table}
     \begin{center}

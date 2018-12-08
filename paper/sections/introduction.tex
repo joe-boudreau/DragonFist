@@ -9,7 +9,7 @@ Our findings indicate a marginal increase in both accuracy (3-5\%) and a signifi
 The second model design achieved less favorable results, exhibiting only marginal increases in performance and accuracy.
 With regards to transformations, we investigate a multitude of existing filters, both linear and non-linear, in addition to implementing some custom filters and looking at their effectiveness.
 Previous research indicates that median filters are effective at removing adversarial noise \cite{osadchy2016} - we found this to be the case in our experiments as well.
-The most effective combination of filters to ensemble was Identity, Edge Detection, Min, Max, Rank, Median, and Gaussian.
+The most effective combination of filters to ensemble was: identity (unfilterd), edge detection, minimum, maximum, rank, median, and Gaussian.
 In general, most filtered models exhibited small accuracy reductions compared to the same model trained with no filter.
 The only filter which could achieve the same classification accuracy as an unfiltered model was a Sobel (edge detection) filter.
 Extremely lossy filters performed, as expected, much worse on classification.
